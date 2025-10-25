@@ -24,7 +24,9 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
 
   void _checkScreenSize() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 768;
+    final screenHeight = MediaQuery.of(context).size.height;
+    // More responsive breakpoints for better tablet support
+    final isMobile = screenWidth < 1024 || (screenWidth < 1200 && screenHeight < 800);
     
     if (_isMobile != isMobile) {
       setState(() {
@@ -296,24 +298,33 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
   Widget _buildMobileTableGrid() {
     return Consumer<POSProvider>(
       builder: (context, posProvider, child) {
-        return Container(
-          margin: const EdgeInsets.all(16),
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1,
-            ),
-            itemCount: posProvider.tables.length,
-            itemBuilder: (context, index) {
-              final table = posProvider.tables[index];
-              return GestureDetector(
-                onTap: () => _handleTableTap(table.id),
-                child: _buildMobileTableCard(table),
-              );
-            },
-          ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Responsive grid based on screen size
+            final screenWidth = constraints.maxWidth;
+            final crossAxisCount = screenWidth > 600 ? 4 : 3;
+            final spacing = screenWidth > 600 ? 16.0 : 12.0;
+            
+            return Container(
+              margin: EdgeInsets.all(spacing),
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: spacing,
+                  mainAxisSpacing: spacing,
+                  childAspectRatio: 1,
+                ),
+                itemCount: posProvider.tables.length,
+                itemBuilder: (context, index) {
+                  final table = posProvider.tables[index];
+                  return GestureDetector(
+                    onTap: () => _handleTableTap(table.id),
+                    child: _buildMobileTableCard(table),
+                  );
+                },
+              ),
+            );
+          },
         );
       },
     );
@@ -326,28 +337,34 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: CustomPaint(
-        painter: FloorLayoutPainter(
-          tables: context.watch<POSProvider>().tables,
-          selectedTableId: _selectedTableId,
-          groupTables: _joiningTables,
-        ),
-        child: Consumer<POSProvider>(
-          builder: (context, posProvider, child) {
-            return Stack(
-              children: posProvider.tables.map((table) {
-                return Positioned(
-                  left: _getTablePosition(table.id).dx,
-                  top: _getTablePosition(table.id).dy,
-                  child: GestureDetector(
-                    onTap: () => _handleTableTap(table.id),
-                    child: _buildTableWidget(table),
-                  ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return CustomPaint(
+            painter: FloorLayoutPainter(
+              tables: context.watch<POSProvider>().tables,
+              selectedTableId: _selectedTableId,
+              groupTables: _joiningTables,
+              containerSize: Size(constraints.maxWidth, constraints.maxHeight),
+            ),
+            child: Consumer<POSProvider>(
+              builder: (context, posProvider, child) {
+                return Stack(
+                  children: posProvider.tables.map((table) {
+                    final position = _getResponsiveTablePosition(table.id, constraints);
+                    return Positioned(
+                      left: position.dx,
+                      top: position.dy,
+                      child: GestureDetector(
+                        onTap: () => _handleTableTap(table.id),
+                        child: _buildResponsiveTableWidget(table, constraints),
+                      ),
+                    );
+                  }).toList(),
                 );
-              }).toList(),
-            );
-          },
-        ),
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -356,62 +373,75 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
     final isSelected = _selectedTableId == table.id;
     final isJoining = _joiningTables.contains(table.id);
     
-    return Container(
-      decoration: BoxDecoration(
-        color: isSelected || isJoining 
-            ? const Color(0xFF4fc3f7) 
-            : table.isOccupied 
-                ? Colors.red.withOpacity(0.7)
-                : Colors.green.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? Colors.white : Colors.transparent,
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.table_restaurant,
-            color: Colors.white,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            table.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Responsive sizing based on card size
+        final cardSize = constraints.maxWidth;
+        final iconSize = (cardSize * 0.3).clamp(20.0, 32.0);
+        final fontSize = (cardSize * 0.12).clamp(10.0, 16.0);
+        final smallFontSize = (cardSize * 0.08).clamp(6.0, 12.0);
+        
+        return Container(
+          decoration: BoxDecoration(
+            color: isSelected || isJoining 
+                ? const Color(0xFF4fc3f7) 
+                : table.isOccupied 
+                    ? Colors.red.withOpacity(0.7)
+                    : Colors.green.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? Colors.white : Colors.transparent,
+              width: 2,
             ),
-          ),
-          if (table.isOccupied)
-            Container(
-              margin: const EdgeInsets.only(top: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-              child: const Text(
-                'Occupied',
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.table_restaurant,
+                color: Colors.white,
+                size: iconSize,
+              ),
+              SizedBox(height: cardSize * 0.05),
+              Text(
+                table.name,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 8,
                   fontWeight: FontWeight.bold,
+                  fontSize: fontSize,
                 ),
               ),
-            ),
-        ],
-      ),
+              if (table.isOccupied)
+                Container(
+                  margin: EdgeInsets.only(top: cardSize * 0.02),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: cardSize * 0.05, 
+                    vertical: cardSize * 0.02,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Occupied',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: smallFontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -483,6 +513,87 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
     );
   }
 
+  Offset _getResponsiveTablePosition(int tableId, BoxConstraints constraints) {
+    // Responsive grid layout that adapts to container size
+    final containerWidth = constraints.maxWidth;
+    final containerHeight = constraints.maxHeight;
+    
+    // Calculate optimal grid based on container size
+    final tablesPerRow = (containerWidth / 150).floor().clamp(3, 6);
+    final spacing = (containerWidth / tablesPerRow).clamp(100.0, 200.0);
+    final tableSize = (spacing * 0.6).clamp(60.0, 120.0);
+    
+    final row = (tableId - 1) ~/ tablesPerRow;
+    final col = (tableId - 1) % tablesPerRow;
+    
+    // Center the grid within the container
+    final startX = (containerWidth - (tablesPerRow - 1) * spacing) / 2;
+    final startY = (containerHeight - (row * spacing)) / 2;
+    
+    return Offset(
+      startX + col * spacing - tableSize / 2,
+      startY + row * spacing - tableSize / 2,
+    );
+  }
+
+  Widget _buildResponsiveTableWidget(TableModel table, BoxConstraints constraints) {
+    final isSelected = _selectedTableId == table.id;
+    final isJoining = _joiningTables.contains(table.id);
+    
+    // Responsive table size based on container
+    final containerWidth = constraints.maxWidth;
+    final tableSize = (containerWidth / 8).clamp(60.0, 120.0);
+    
+    return Container(
+      width: tableSize,
+      height: tableSize,
+      decoration: BoxDecoration(
+        color: isSelected || isJoining 
+            ? const Color(0xFF4fc3f7) 
+            : table.isOccupied 
+                ? Colors.red.withOpacity(0.7)
+                : Colors.green.withOpacity(0.7),
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isSelected ? Colors.white : Colors.transparent,
+          width: 3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            table.isJoined ? '🔗' : '🍽️',
+            style: TextStyle(fontSize: (tableSize * 0.3).clamp(16.0, 32.0)),
+          ),
+          Text(
+            table.name,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: (tableSize * 0.15).clamp(8.0, 16.0),
+            ),
+          ),
+          if (table.isOccupied)
+            Text(
+              'Occupied',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: (tableSize * 0.1).clamp(6.0, 12.0),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   void _handleTableTap(int tableId) {
     setState(() {
       if (_joiningTables.contains(tableId)) {
@@ -541,11 +652,13 @@ class FloorLayoutPainter extends CustomPainter {
   final List<TableModel> tables;
   final int? selectedTableId;
   final List<int> groupTables;
+  final Size? containerSize;
 
   FloorLayoutPainter({
     required this.tables,
     required this.selectedTableId,
     required this.groupTables,
+    this.containerSize,
   });
 
   @override
@@ -554,14 +667,25 @@ class FloorLayoutPainter extends CustomPainter {
       ..color = Colors.white.withOpacity(0.3)
       ..strokeWidth = 2;
 
+    // Use responsive positioning if container size is provided
+    final useResponsive = containerSize != null;
+    
     // Draw connection lines for joined tables
     for (int i = 0; i < groupTables.length - 1; i++) {
-      final startPos = _getTablePosition(groupTables[i]);
-      final endPos = _getTablePosition(groupTables[i + 1]);
+      final startPos = useResponsive 
+          ? _getResponsiveTablePosition(groupTables[i], containerSize!)
+          : _getTablePosition(groupTables[i]);
+      final endPos = useResponsive 
+          ? _getResponsiveTablePosition(groupTables[i + 1], containerSize!)
+          : _getTablePosition(groupTables[i + 1]);
+      
+      final tableSize = useResponsive 
+          ? (containerSize!.width / 8).clamp(60.0, 120.0) / 2
+          : 40.0;
       
       canvas.drawLine(
-        Offset(startPos.dx + 40, startPos.dy + 40),
-        Offset(endPos.dx + 40, endPos.dy + 40),
+        Offset(startPos.dx + tableSize, startPos.dy + tableSize),
+        Offset(endPos.dx + tableSize, endPos.dy + tableSize),
         paint,
       );
     }
@@ -570,12 +694,20 @@ class FloorLayoutPainter extends CustomPainter {
     for (final table in tables) {
       if (table.isJoined) {
         for (final joinedTableId in table.joinedTables) {
-          final startPos = _getTablePosition(table.id);
-          final endPos = _getTablePosition(joinedTableId);
+          final startPos = useResponsive 
+              ? _getResponsiveTablePosition(table.id, containerSize!)
+              : _getTablePosition(table.id);
+          final endPos = useResponsive 
+              ? _getResponsiveTablePosition(joinedTableId, containerSize!)
+              : _getTablePosition(joinedTableId);
+          
+          final tableSize = useResponsive 
+              ? (containerSize!.width / 8).clamp(60.0, 120.0) / 2
+              : 40.0;
           
           canvas.drawLine(
-            Offset(startPos.dx + 40, startPos.dy + 40),
-            Offset(endPos.dx + 40, endPos.dy + 40),
+            Offset(startPos.dx + tableSize, startPos.dy + tableSize),
+            Offset(endPos.dx + tableSize, endPos.dy + tableSize),
             paint..color = const Color(0xFF4fc3f7),
           );
         }
@@ -593,6 +725,29 @@ class FloorLayoutPainter extends CustomPainter {
     return Offset(
       col * spacing + 40,
       row * spacing + 40,
+    );
+  }
+
+  Offset _getResponsiveTablePosition(int tableId, Size containerSize) {
+    // Responsive grid layout that adapts to container size
+    final containerWidth = containerSize.width;
+    final containerHeight = containerSize.height;
+    
+    // Calculate optimal grid based on container size
+    final tablesPerRow = (containerWidth / 150).floor().clamp(3, 6);
+    final spacing = (containerWidth / tablesPerRow).clamp(100.0, 200.0);
+    final tableSize = (spacing * 0.6).clamp(60.0, 120.0);
+    
+    final row = (tableId - 1) ~/ tablesPerRow;
+    final col = (tableId - 1) % tablesPerRow;
+    
+    // Center the grid within the container
+    final startX = (containerWidth - (tablesPerRow - 1) * spacing) / 2;
+    final startY = (containerHeight - (row * spacing)) / 2;
+    
+    return Offset(
+      startX + col * spacing - tableSize / 2,
+      startY + row * spacing - tableSize / 2,
     );
   }
 

@@ -40,7 +40,9 @@ class _POSScreenState extends State<POSScreen> {
 
   void _checkScreenSize() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 768;
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Better tablet detection - only consider mobile if screen is small in both dimensions
+    final isMobile = screenWidth < 1024 || (screenWidth < 1200 && screenHeight < 800);
     
     if (_isMobile != isMobile) {
       setState(() {
@@ -49,6 +51,7 @@ class _POSScreenState extends State<POSScreen> {
           _showLeftPanel = false;
           _showRightPanel = false;
         } else {
+          // Always show panels on tablet/desktop - no need for toggle buttons
           _showLeftPanel = true;
           _showRightPanel = true;
         }
@@ -272,28 +275,37 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   void _toggleLeftPanel() {
-    setState(() {
-      _showLeftPanel = !_showLeftPanel;
-      if (_showLeftPanel) {
-        _showRightPanel = false;
-      }
-    });
+    // Only allow toggling on mobile devices
+    if (_isMobile) {
+      setState(() {
+        _showLeftPanel = !_showLeftPanel;
+        if (_showLeftPanel) {
+          _showRightPanel = false;
+        }
+      });
+    }
   }
 
   void _toggleRightPanel() {
-    setState(() {
-      _showRightPanel = !_showRightPanel;
-      if (_showRightPanel) {
-        _showLeftPanel = false;
-      }
-    });
+    // Only allow toggling on mobile devices
+    if (_isMobile) {
+      setState(() {
+        _showRightPanel = !_showRightPanel;
+        if (_showRightPanel) {
+          _showLeftPanel = false;
+        }
+      });
+    }
   }
 
   void _showMenuPanel() {
-    setState(() {
-      _showLeftPanel = false;
-      _showRightPanel = false;
-    });
+    // Only allow panel switching on mobile devices
+    if (_isMobile) {
+      setState(() {
+        _showLeftPanel = false;
+        _showRightPanel = false;
+      });
+    }
   }
 
   Widget _buildTablePanel(POSProvider posProvider) {
@@ -706,26 +718,6 @@ class _POSScreenState extends State<POSScreen> {
                 const SizedBox(width: 12),
                 Row(
                   children: [
-                    // Desktop Panel Toggle Buttons
-                    if (!_isMobile) ...[
-                      IconButton(
-                        onPressed: () => setState(() => _showLeftPanel = !_showLeftPanel),
-                        icon: Icon(
-                          _showLeftPanel ? Icons.chevron_left : Icons.chevron_right,
-                          color: Colors.white54,
-                        ),
-                        tooltip: _showLeftPanel ? 'Hide Orders Panel' : 'Show Orders Panel',
-                      ),
-                      IconButton(
-                        onPressed: () => setState(() => _showRightPanel = !_showRightPanel),
-                        icon: Icon(
-                          _showRightPanel ? Icons.chevron_right : Icons.chevron_left,
-                          color: Colors.white54,
-                        ),
-                        tooltip: _showRightPanel ? 'Hide Categories Panel' : 'Show Categories Panel',
-                      ),
-                      const SizedBox(width: 8),
-                    ],
                     // Search Bar
                     Container(
                       width: _isMobile ? 150 : 200,

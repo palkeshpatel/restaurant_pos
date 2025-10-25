@@ -3,8 +3,15 @@ import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
 import 'floor_layout_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  String _errorMessage = '';
 
   @override
   Widget build(BuildContext context) {
@@ -143,10 +150,16 @@ class LoginScreen extends StatelessWidget {
                         children: [
                           _buildActionButton(context, 'Clear', () {
                             context.read<POSProvider>().clearPIN();
+                            setState(() {
+                              _errorMessage = '';
+                            });
                           }),
                           _buildNumberButton(context, '0'),
                           _buildActionButton(context, 'Del', () {
                             context.read<POSProvider>().removeLastDigit();
+                            setState(() {
+                              _errorMessage = '';
+                            });
                           }),
                         ],
                       ),
@@ -156,15 +169,36 @@ class LoginScreen extends StatelessWidget {
                 
                 const SizedBox(height: 40),
                 
-                // Login Button
+                // Error Message Display
+                if (_errorMessage.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red),
+                    ),
+                    child: Text(
+                      _errorMessage,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                
+                // Login Button (only show if PIN is complete and no error)
                 Consumer<POSProvider>(
                   builder: (context, posProvider, child) {
                     final isPINComplete = posProvider.currentPIN.length == 6;
+                    final shouldShowButton = isPINComplete && _errorMessage.isEmpty;
                     
-                    return ElevatedButton(
-                      onPressed: isPINComplete ? () => _handleLogin(context) : null,
+                    return shouldShowButton ? ElevatedButton(
+                      onPressed: () => _handleLogin(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isPINComplete ? const Color(0xFF4fc3f7) : Colors.grey,
+                        backgroundColor: const Color(0xFF4fc3f7),
                         padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
@@ -178,27 +212,8 @@ class LoginScreen extends StatelessWidget {
                           color: Colors.white,
                         ),
                       ),
-                    );
+                    ) : const SizedBox.shrink();
                   },
-                ),
-                
-                const SizedBox(height: 20),
-                
-                // Demo PIN Info
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange),
-                  ),
-                  child: const Text(
-                    'Demo PIN: 123456',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
                 ),
                 ],
               ),
@@ -215,7 +230,13 @@ class LoginScreen extends StatelessWidget {
         final canAddDigit = posProvider.currentPIN.length < 6;
         
         return ElevatedButton(
-          onPressed: canAddDigit ? () => posProvider.addDigitToPIN(number) : null,
+          onPressed: canAddDigit ? () {
+            posProvider.addDigitToPIN(number);
+            // Auto-login when 6 digits are entered
+            if (posProvider.currentPIN.length == 6) {
+              _handleAutoLogin(context);
+            }
+          } : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: canAddDigit ? const Color(0xFF4fc3f7) : Colors.grey,
             padding: const EdgeInsets.all(16),
@@ -253,6 +274,27 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
+  void _handleAutoLogin(BuildContext context) {
+    final posProvider = context.read<POSProvider>();
+    final enteredPIN = posProvider.currentPIN;
+    final isAuthenticated = posProvider.authenticatePIN(enteredPIN);
+    
+    if (isAuthenticated) {
+      // Quick login - navigate immediately
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const FloorLayoutScreen(),
+        ),
+      );
+    } else {
+      // Show error message without login button
+      setState(() {
+        _errorMessage = 'Wrong password. Please try again.';
+      });
+      posProvider.clearPIN();
+    }
+  }
+
   void _handleLogin(BuildContext context) {
     final posProvider = context.read<POSProvider>();
     final enteredPIN = posProvider.currentPIN;
@@ -265,13 +307,9 @@ class LoginScreen extends StatelessWidget {
         ),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid PIN. Please try again.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      setState(() {
+        _errorMessage = 'Wrong password. Please try again.';
+      });
       posProvider.clearPIN();
     }
   }

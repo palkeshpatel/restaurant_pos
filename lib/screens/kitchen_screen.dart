@@ -677,7 +677,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
                   ),
                 ),
                 
-                // Priority Indicator
+                // Priority Indicator and Status Dropdown
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -692,6 +692,67 @@ class _KitchenScreenState extends State<KitchenScreen> {
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.6),
                         fontSize: 10,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Status Change Dropdown
+                    Tooltip(
+                      message: 'Change status (or drag to move)',
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<ItemStatus>(
+                            value: orderItem.status,
+                            isDense: true,
+                            dropdownColor: const Color(0xFF1a2a3a),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                            icon: Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.white.withOpacity(0.7),
+                              size: 16,
+                            ),
+                            items: ItemStatus.values.map((status) {
+                              return DropdownMenuItem<ItemStatus>(
+                                value: status,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _getStatusIcon(status),
+                                      color: _getStatusColor(status),
+                                      size: 12,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      status.displayName,
+                                      style: TextStyle(
+                                        color: _getStatusColor(status),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (ItemStatus? newStatus) {
+                              if (newStatus != null && newStatus != orderItem.status) {
+                                _moveItemToStatus(orderItem, newStatus, posProvider);
+                              }
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -758,6 +819,17 @@ class _KitchenScreenState extends State<KitchenScreen> {
         return 'Hold';
       case ItemStatus.served:
         return 'Served';
+    }
+  }
+
+  IconData _getStatusIcon(ItemStatus status) {
+    switch (status) {
+      case ItemStatus.fire:
+        return Icons.local_fire_department;
+      case ItemStatus.hold:
+        return Icons.hourglass_empty;
+      case ItemStatus.served:
+        return Icons.check_circle;
     }
   }
 
