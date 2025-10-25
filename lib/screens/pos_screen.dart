@@ -4,6 +4,7 @@ import '../providers/pos_provider.dart';
 import '../models/table_model.dart';
 import '../models/menu_item.dart';
 import 'kitchen_screen.dart';
+import 'settings_screen.dart';
 
 class POSScreen extends StatefulWidget {
   const POSScreen({super.key});
@@ -1476,17 +1477,9 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   void _showSettings() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Settings'),
-        content: const Text('Settings screen coming soon...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }
