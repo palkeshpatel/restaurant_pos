@@ -184,33 +184,6 @@ class _POSScreenState extends State<POSScreen> {
               ],
             ),
           ),
-          
-          // Status Counters and Action Buttons
-          Consumer<POSProvider>(
-            builder: (context, posProvider, child) {
-              return Row(
-                children: [
-                  _buildStatusChip('🔥', posProvider.statusCounters[ItemStatus.fire] ?? 0),
-                  const SizedBox(width: 4),
-                  _buildStatusChip('⏸️', posProvider.statusCounters[ItemStatus.hold] ?? 0),
-                  const SizedBox(width: 4),
-                  _buildStatusChip('✅', posProvider.statusCounters[ItemStatus.served] ?? 0),
-                  const SizedBox(width: 8),
-                  // Send to Kitchen Button
-                  ElevatedButton.icon(
-                    onPressed: () => _sendToKitchen(posProvider),
-                    icon: const Icon(Icons.restaurant_menu, size: 16),
-                    label: const Text('Send', style: TextStyle(fontSize: 10)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
         ],
       ),
     );
