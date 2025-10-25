@@ -148,7 +148,7 @@ class _POSScreenState extends State<POSScreen> {
 
   Widget _buildMobileHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: const BoxDecoration(
         color: Color(0xFF1a2a3a),
         border: Border(
@@ -162,24 +162,34 @@ class _POSScreenState extends State<POSScreen> {
             child: Row(
               children: [
                 _buildMobileNavButton(
-                  icon: Icons.table_restaurant,
+                  icon: Icons.description_outlined,
                   label: 'Orders',
                   isActive: _showLeftPanel,
                   onTap: () => _toggleLeftPanel(),
                 ),
-                const SizedBox(width: 8),
                 _buildMobileNavButton(
                   icon: Icons.restaurant_menu,
                   label: 'Menu',
                   isActive: !_showLeftPanel && !_showRightPanel,
                   onTap: () => _showMenuPanel(),
                 ),
-                const SizedBox(width: 8),
                 _buildMobileNavButton(
-                  icon: Icons.category,
+                  icon: Icons.grid_view,
                   label: 'Categories',
                   isActive: _showRightPanel,
                   onTap: () => _toggleRightPanel(),
+                ),
+                _buildMobileNavButton(
+                  icon: Icons.room_service,
+                  label: 'Kitchen',
+                  isActive: false,
+                  onTap: () => _navigateToKitchen(),
+                ),
+                _buildMobileNavButton(
+                  icon: Icons.settings,
+                  label: 'Setting',
+                  isActive: false,
+                  onTap: () => _showSettings(),
                 ),
               ],
             ),
@@ -199,29 +209,25 @@ class _POSScreenState extends State<POSScreen> {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
           decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF4fc3f7).withOpacity(0.2) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isActive ? const Color(0xFF4fc3f7) : Colors.white.withOpacity(0.3),
-              width: 1,
-            ),
+            color: isActive ? const Color(0xFF2196f3) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                color: isActive ? const Color(0xFF4fc3f7) : Colors.white54,
-                size: 20,
+                color: isActive ? Colors.white : Colors.white70,
+                size: 22,
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: isActive ? const Color(0xFF4fc3f7) : Colors.white54,
-                  fontSize: 10,
+                  color: isActive ? Colors.white : Colors.white70,
+                  fontSize: 11,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -1459,5 +1465,29 @@ class _POSScreenState extends State<POSScreen> {
   void _mergeTable() {
     // Navigate back to floor layout to select another table
     Navigator.of(context).pop();
+  }
+
+  void _navigateToKitchen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const KitchenScreen(),
+      ),
+    );
+  }
+
+  void _showSettings() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Settings'),
+        content: const Text('Settings screen coming soon...'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }
