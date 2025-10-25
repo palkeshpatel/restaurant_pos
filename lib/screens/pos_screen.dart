@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
+import '../providers/settings_provider.dart';
 import '../models/table_model.dart';
 import '../models/menu_item.dart';
 import 'kitchen_screen.dart';
@@ -123,27 +124,33 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   Widget _buildDesktopLayout(POSProvider posProvider) {
-    return Row(
-      children: [
-        // Left Panel - Table & Customers
-        if (_showLeftPanel)
-          SizedBox(
-            width: MediaQuery.of(context).size.width * 0.35,
-                    child: _buildTablePanel(posProvider),
-                  ),
+    return Consumer<SettingsProvider>(
+      builder: (context, settingsProvider, child) {
+        final layout = settingsProvider.menuLayout;
+        
+        return Row(
+          children: [
+            // Left Panel - Table & Customers
+            if (_showLeftPanel)
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.35,
+                child: _buildTablePanel(posProvider),
+              ),
                   
-        // Middle Panel - Menu Items
-                  Expanded(
-                    child: _buildMenuPanel(posProvider),
-                  ),
+            // Middle Panel - Menu Items
+            Expanded(
+              child: _buildMenuPanel(posProvider),
+            ),
                   
-        // Right Panel - Categories & Status
-        if (_showRightPanel)
-          SizedBox(
-            width: MediaQuery.of(context).size.width * 0.15,
-                    child: _buildCategoryPanel(posProvider),
-          ),
-      ],
+            // Right Panel - Categories & Status
+            if (_showRightPanel)
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.15,
+                child: _buildCategoryPanel(posProvider),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -647,14 +654,56 @@ class _POSScreenState extends State<POSScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _selectedCategory.displayName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4fc3f7),
+                // Category Dropdown
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<MenuCategory>(
+                        value: _selectedCategory,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF2a3a4a),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                        items: MenuCategory.values.map((category) {
+                          return DropdownMenuItem<MenuCategory>(
+                            value: category,
+                            child: Row(
+                              children: [
+                                Text(category.emoji, style: const TextStyle(fontSize: 18)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    category.displayName,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (MenuCategory? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              _selectedCategory = newValue;
+                              _searchQuery = '';
+                            });
+                          }
+                        },
+                      ),
+                    ),
                   ),
                 ),
+                const SizedBox(width: 12),
                 Row(
                   children: [
                     // Desktop Panel Toggle Buttons
@@ -678,27 +727,27 @@ class _POSScreenState extends State<POSScreen> {
                       const SizedBox(width: 8),
                     ],
                     // Search Bar
-                Container(
+                    Container(
                       width: _isMobile ? 150 : 200,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: 'Search items...',
-                      hintStyle: TextStyle(color: Colors.white54),
-                      border: InputBorder.none,
-                      icon: Icon(Icons.search, color: Colors.white54),
-                    ),
-                  ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: TextField(
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: 'Search items...',
+                          hintStyle: TextStyle(color: Colors.white54),
+                          border: InputBorder.none,
+                          icon: Icon(Icons.search, color: Colors.white54),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1189,9 +1238,9 @@ class _POSScreenState extends State<POSScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category Selection Header
+          // Category Dropdown for Mobile
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
@@ -1199,42 +1248,59 @@ class _POSScreenState extends State<POSScreen> {
             ),
             child: Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.category,
                   color: Colors.white,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Select Category',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                if (_selectedCategory != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2196f3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _selectedCategory!.displayName,
+                Expanded(
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<MenuCategory>(
+                      value: _selectedCategory,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF2a3a4a),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+                      items: MenuCategory.values.map((category) {
+                        return DropdownMenuItem<MenuCategory>(
+                          value: category,
+                          child: Row(
+                            children: [
+                              Text(category.emoji, style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  category.displayName,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (MenuCategory? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedCategory = newValue;
+                            _searchQuery = '';
+                          });
+                          // Switch to menu panel after selecting category
+                          _showMenuPanel();
+                        }
+                      },
                     ),
                   ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          // Category Grid
+          // Category Grid (keep for visual reference)
           Expanded(
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
