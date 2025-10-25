@@ -14,6 +14,24 @@ class FloorLayoutScreen extends StatefulWidget {
 class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
   int? _selectedTableId;
   List<int> _joiningTables = [];
+  bool _isMobile = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkScreenSize();
+  }
+
+  void _checkScreenSize() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
+    if (_isMobile != isMobile) {
+      setState(() {
+        _isMobile = isMobile;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,55 +52,10 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Restaurant Floor Layout',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Consumer<POSProvider>(
-                          builder: (context, posProvider, child) {
-                            return IconButton(
-                              onPressed: () => posProvider.logout(),
-                              icon: const Icon(
-                                Icons.logout,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 10),
-                        Consumer<POSProvider>(
-                          builder: (context, posProvider, child) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF4fc3f7),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                'Tables: ${posProvider.tables.length}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                padding: EdgeInsets.all(_isMobile ? 16 : 20),
+                child: _isMobile 
+                    ? _buildMobileHeader()
+                    : _buildDesktopHeader(),
               ),
               
               // Instructions
@@ -108,90 +81,336 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
               
               // Floor Layout
               Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: CustomPaint(
-                    painter: FloorLayoutPainter(
-                      tables: context.watch<POSProvider>().tables,
-                      selectedTableId: _selectedTableId,
-                      groupTables: _joiningTables,
-                    ),
-                    child: Consumer<POSProvider>(
-                      builder: (context, posProvider, child) {
-                        return Stack(
-                          children: posProvider.tables.map((table) {
-                            return Positioned(
-                              left: _getTablePosition(table.id).dx,
-                              top: _getTablePosition(table.id).dy,
-                              child: GestureDetector(
-                                onTap: () => _handleTableTap(table.id),
-                                child: _buildTableWidget(table),
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
-                  ),
-                ),
+                child: _isMobile 
+                    ? _buildMobileTableGrid()
+                    : _buildDesktopTableGrid(),
               ),
               
               // Action Buttons
               Container(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _joiningTables.length >= 2 ? _joinTables : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4fc3f7),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                padding: EdgeInsets.all(_isMobile ? 16 : 20),
+                child: _isMobile 
+                    ? Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _selectedTableId != null ? _enterTable : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Text(
+                                'Enter Table',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          'Join Tables (${_joiningTables.length}/2)',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _joiningTables.length >= 2 ? _joinTables : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4fc3f7),
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                'Join Tables (${_joiningTables.length}/2)',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _joiningTables.length >= 2 ? _joinTables : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4fc3f7),
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                'Join Tables (${_joiningTables.length}/2)',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _selectedTableId != null ? _enterTable : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Text(
+                                'Enter Table',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _selectedTableId != null ? _enterTable : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          'Enter Table',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildMobileHeader() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Restaurant Floor Layout',
+              style: TextStyle(
+                fontSize: _isMobile ? 18 : 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            Consumer<POSProvider>(
+              builder: (context, posProvider, child) {
+                return IconButton(
+                  onPressed: () => posProvider.logout(),
+                  icon: const Icon(
+                    Icons.logout,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Consumer<POSProvider>(
+          builder: (context, posProvider, child) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4fc3f7),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Tables: ${posProvider.tables.length}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Restaurant Floor Layout',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Row(
+          children: [
+            Consumer<POSProvider>(
+              builder: (context, posProvider, child) {
+                return IconButton(
+                  onPressed: () => posProvider.logout(),
+                  icon: const Icon(
+                    Icons.logout,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 10),
+            Consumer<POSProvider>(
+              builder: (context, posProvider, child) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4fc3f7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Tables: ${posProvider.tables.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileTableGrid() {
+    return Consumer<POSProvider>(
+      builder: (context, posProvider, child) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1,
+            ),
+            itemCount: posProvider.tables.length,
+            itemBuilder: (context, index) {
+              final table = posProvider.tables[index];
+              return GestureDetector(
+                onTap: () => _handleTableTap(table.id),
+                child: _buildMobileTableCard(table),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopTableGrid() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: CustomPaint(
+        painter: FloorLayoutPainter(
+          tables: context.watch<POSProvider>().tables,
+          selectedTableId: _selectedTableId,
+          groupTables: _joiningTables,
+        ),
+        child: Consumer<POSProvider>(
+          builder: (context, posProvider, child) {
+            return Stack(
+              children: posProvider.tables.map((table) {
+                return Positioned(
+                  left: _getTablePosition(table.id).dx,
+                  top: _getTablePosition(table.id).dy,
+                  child: GestureDetector(
+                    onTap: () => _handleTableTap(table.id),
+                    child: _buildTableWidget(table),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileTableCard(TableModel table) {
+    final isSelected = _selectedTableId == table.id;
+    final isJoining = _joiningTables.contains(table.id);
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected || isJoining 
+            ? const Color(0xFF4fc3f7) 
+            : table.isOccupied 
+                ? Colors.red.withOpacity(0.7)
+                : Colors.green.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? Colors.white : Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.table_restaurant,
+            color: Colors.white,
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            table.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          if (table.isOccupied)
+            Container(
+              margin: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Occupied',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -14,6 +14,8 @@ class KitchenScreen extends StatefulWidget {
 
 class _KitchenScreenState extends State<KitchenScreen> {
   late Timer _timer;
+  bool _isMobile = false;
+  ItemStatus? _selectedMobileStatus;
 
   @override
   void initState() {
@@ -21,6 +23,23 @@ class _KitchenScreenState extends State<KitchenScreen> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {});
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkScreenSize();
+  }
+
+  void _checkScreenSize() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
+    if (_isMobile != isMobile) {
+      setState(() {
+        _isMobile = isMobile;
+      });
+    }
   }
 
   @override
@@ -49,95 +68,18 @@ class _KitchenScreenState extends State<KitchenScreen> {
               // Header
               Container(
                 padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Kitchen Management',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Live Orders',
-                            style: TextStyle(
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Consumer<POSProvider>(
-                          builder: (context, posProvider, child) {
-                            return ElevatedButton.icon(
-                              onPressed: () => _printServedOrders(posProvider),
-                              icon: const Icon(Icons.print, color: Colors.white),
-                              label: const Text('Print Order', style: TextStyle(color: Colors.white)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                child: _isMobile 
+                    ? _buildMobileHeader()
+                    : _buildDesktopHeader(),
               ),
               
               // Status Columns
               Expanded(
                 child: Consumer<POSProvider>(
                   builder: (context, posProvider, child) {
-                    return Row(
-                      children: [
-                        // Fire Orders (Drinks/Quick Items)
-                        Expanded(
-                          child: _buildStatusColumn(
-                            'Fire',
-                            ItemStatus.fire,
-                            Colors.red,
-                            posProvider,
-                          ),
-                        ),
-                        
-                        // Hold Orders (Main Course) - using hourglass icon
-                        Expanded(
-                          child: _buildStatusColumn(
-                            'Hold',
-                            ItemStatus.hold,
-                            Colors.orange,
-                            posProvider,
-                          ),
-                        ),
-                        
-                        // Served Orders
-                        Expanded(
-                          child: _buildStatusColumn(
-                            'Served',
-                            ItemStatus.served,
-                            Colors.green,
-                            posProvider,
-                          ),
-                        ),
-                      ],
-                    );
+                    return _isMobile 
+                        ? _buildMobileLayout(posProvider)
+                        : _buildDesktopLayout(posProvider);
                   },
                 ),
               ),
@@ -148,11 +90,243 @@ class _KitchenScreenState extends State<KitchenScreen> {
     );
   }
 
+  Widget _buildMobileHeader() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Kitchen Management',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Live Orders',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Consumer<POSProvider>(
+              builder: (context, posProvider, child) {
+                return ElevatedButton.icon(
+                  onPressed: () => _printServedOrders(posProvider),
+                  icon: const Icon(Icons.print, color: Colors.white, size: 16),
+                  label: const Text('Print', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Kitchen Management',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Live Orders',
+                style: TextStyle(
+                  color: Colors.orange,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Consumer<POSProvider>(
+              builder: (context, posProvider, child) {
+                return ElevatedButton.icon(
+                  onPressed: () => _printServedOrders(posProvider),
+                  icon: const Icon(Icons.print, color: Colors.white),
+                  label: const Text('Print Order', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(POSProvider posProvider) {
+    return Column(
+      children: [
+        // Mobile Status Navigation
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              _buildMobileStatusTab('Fire', ItemStatus.fire, Colors.red, posProvider),
+              const SizedBox(width: 8),
+              _buildMobileStatusTab('Hold', ItemStatus.hold, Colors.orange, posProvider),
+              const SizedBox(width: 8),
+              _buildMobileStatusTab('Served', ItemStatus.served, Colors.green, posProvider),
+            ],
+          ),
+        ),
+        // Selected Status Content
+        Expanded(
+          child: _buildSelectedStatusContent(posProvider),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileStatusTab(String title, ItemStatus status, Color color, POSProvider posProvider) {
+    final items = _getItemsByStatus(status, posProvider);
+    final isSelected = _selectedMobileStatus == status;
+    
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedMobileStatus = status),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? color : Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                status.emoji,
+                style: const TextStyle(fontSize: 20),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                title,
+                style: TextStyle(
+                  color: isSelected ? color : Colors.white,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${items.length}',
+                style: TextStyle(
+                  color: isSelected ? color : Colors.white54,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedStatusContent(POSProvider posProvider) {
+    if (_selectedMobileStatus == null) {
+      _selectedMobileStatus = ItemStatus.fire;
+    }
+    
+    return _buildStatusColumn(
+      _getStatusDisplayName(_selectedMobileStatus!),
+      _selectedMobileStatus!,
+      _getStatusColor(_selectedMobileStatus!),
+      posProvider,
+    );
+  }
+
+  Widget _buildDesktopLayout(POSProvider posProvider) {
+    return Row(
+      children: [
+        // Fire Orders (Drinks/Quick Items)
+        Expanded(
+          child: _buildStatusColumn(
+            'Fire',
+            ItemStatus.fire,
+            Colors.red,
+            posProvider,
+          ),
+        ),
+        
+        // Hold Orders (Main Course) - using hourglass icon
+        Expanded(
+          child: _buildStatusColumn(
+            'Hold',
+            ItemStatus.hold,
+            Colors.orange,
+            posProvider,
+          ),
+        ),
+        
+        // Served Orders
+        Expanded(
+          child: _buildStatusColumn(
+            'Served',
+            ItemStatus.served,
+            Colors.green,
+            posProvider,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusColumn(String title, ItemStatus status, Color color, POSProvider posProvider) {
     final items = _getItemsByStatus(status, posProvider);
     
     return Container(
-      margin: const EdgeInsets.all(8),
+      margin: _isMobile ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
@@ -467,6 +641,17 @@ class _KitchenScreenState extends State<KitchenScreen> {
         return Colors.orange;
       case ItemStatus.served:
         return Colors.green;
+    }
+  }
+
+  String _getStatusDisplayName(ItemStatus status) {
+    switch (status) {
+      case ItemStatus.fire:
+        return 'Fire';
+      case ItemStatus.hold:
+        return 'Hold';
+      case ItemStatus.served:
+        return 'Served';
     }
   }
 

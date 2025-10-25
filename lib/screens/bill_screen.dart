@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import '../providers/pos_provider.dart';
 import '../models/table_model.dart';
 
 class BillScreen extends StatefulWidget {
@@ -16,6 +15,24 @@ class BillScreen extends StatefulWidget {
 
 class _BillScreenState extends State<BillScreen> {
   final Set<int> _removedItems = {};
+  bool _isMobile = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkScreenSize();
+  }
+
+  void _checkScreenSize() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
+    if (_isMobile != isMobile) {
+      setState(() {
+        _isMobile = isMobile;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,13 +69,13 @@ class _BillScreenState extends State<BillScreen> {
             children: [
               // Restaurant Header
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(_isMobile ? 16 : 20),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       '🍽️ RESTAURANT BILL',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontSize: _isMobile ? 20 : 28,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                         letterSpacing: 2,
@@ -67,15 +84,15 @@ class _BillScreenState extends State<BillScreen> {
                     const SizedBox(height: 10),
                     Text(
                       'Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: _isMobile ? 14 : 16,
                         color: Colors.white70,
                       ),
                     ),
                     Text(
                       'Time: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: _isMobile ? 14 : 16,
                         color: Colors.white70,
                       ),
                     ),
@@ -86,7 +103,7 @@ class _BillScreenState extends State<BillScreen> {
               // Bill Items
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: _isMobile ? 16 : 20),
                   itemCount: widget.items.length,
                   itemBuilder: (context, index) {
                     final item = widget.items[index];
@@ -107,7 +124,7 @@ class _BillScreenState extends State<BillScreen> {
               
               // Bill Summary
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(_isMobile ? 16 : 20),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
                   border: const Border(
@@ -122,33 +139,63 @@ class _BillScreenState extends State<BillScreen> {
                     const SizedBox(height: 16),
                     _buildSummaryRow('Total', total, isTotal: true),
                     const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.close),
-                            label: const Text('Close'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: const EdgeInsets.all(16),
-                            ),
+                    _isMobile 
+                        ? Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _printBill(subtotal, tax, total),
+                                  icon: const Icon(Icons.print),
+                                  label: const Text('Print Bill'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    padding: const EdgeInsets.all(16),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('Close'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    padding: const EdgeInsets.all(16),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  icon: const Icon(Icons.close),
+                                  label: const Text('Close'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    padding: const EdgeInsets.all(16),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _printBill(subtotal, tax, total),
+                                  icon: const Icon(Icons.print),
+                                  label: const Text('Print Bill'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    padding: const EdgeInsets.all(16),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () => _printBill(subtotal, tax, total),
-                            icon: const Icon(Icons.print),
-                            label: const Text('Print Bill'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.all(16),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),

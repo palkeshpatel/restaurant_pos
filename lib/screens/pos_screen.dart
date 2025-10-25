@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
 import '../models/table_model.dart';
 import '../models/menu_item.dart';
-import 'bill_screen.dart';
 import 'kitchen_screen.dart';
 
 class POSScreen extends StatefulWidget {
@@ -16,9 +15,52 @@ class POSScreen extends StatefulWidget {
 class _POSScreenState extends State<POSScreen> {
   MenuCategory _selectedCategory = MenuCategory.combos;
   String _searchQuery = '';
+  
+  // Responsive layout state
+  bool _showLeftPanel = true;
+  bool _showRightPanel = true;
+  bool _isMobile = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with default values
+    _isMobile = false;
+    _showLeftPanel = true;
+    _showRightPanel = true;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkScreenSize();
+  }
+
+  void _checkScreenSize() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
+    if (_isMobile != isMobile) {
+      setState(() {
+        _isMobile = isMobile;
+        if (_isMobile) {
+          _showLeftPanel = false;
+          _showRightPanel = false;
+        } else {
+          _showLeftPanel = true;
+          _showRightPanel = true;
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Ensure we have the correct screen size detection
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkScreenSize();
+    });
+    
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -45,32 +87,226 @@ class _POSScreenState extends State<POSScreen> {
                 );
               }
 
-              return Row(
-                children: [
-                  // Left Panel - Table & Customers (35%)
-                  Expanded(
-                    flex: 35,
-                    child: _buildTablePanel(posProvider),
-                  ),
-                  
-                  // Middle Panel - Menu Items (50%)
-                  Expanded(
-                    flex: 50,
-                    child: _buildMenuPanel(posProvider),
-                  ),
-                  
-                  // Right Panel - Categories & Status (15%)
-                  Expanded(
-                    flex: 15,
-                    child: _buildCategoryPanel(posProvider),
-                  ),
-                ],
-              );
+              return _buildResponsiveLayout(posProvider);
             },
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildResponsiveLayout(POSProvider posProvider) {
+    if (_isMobile) {
+      return _buildMobileLayout(posProvider);
+    } else {
+      return _buildDesktopLayout(posProvider);
+    }
+  }
+
+  Widget _buildMobileLayout(POSProvider posProvider) {
+    return Column(
+                children: [
+        // Mobile Header with Navigation
+        _buildMobileHeader(),
+        
+        // Main Content Area
+                  Expanded(
+          child: _showLeftPanel 
+              ? _buildTablePanel(posProvider)
+              : _showRightPanel 
+                  ? _buildCategoryPanel(posProvider)
+                  : _buildMenuPanel(posProvider),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopLayout(POSProvider posProvider) {
+    return Row(
+      children: [
+        // Left Panel - Table & Customers
+        if (_showLeftPanel)
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.35,
+                    child: _buildTablePanel(posProvider),
+                  ),
+                  
+        // Middle Panel - Menu Items
+                  Expanded(
+                    child: _buildMenuPanel(posProvider),
+                  ),
+                  
+        // Right Panel - Categories & Status
+        if (_showRightPanel)
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.15,
+                    child: _buildCategoryPanel(posProvider),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMobileHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1a2a3a),
+        border: Border(
+          bottom: BorderSide(color: Colors.white, width: 0.1),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Navigation Buttons
+          Expanded(
+            child: Row(
+              children: [
+                _buildMobileNavButton(
+                  icon: Icons.table_restaurant,
+                  label: 'Orders',
+                  isActive: _showLeftPanel,
+                  onTap: () => _toggleLeftPanel(),
+                ),
+                const SizedBox(width: 8),
+                _buildMobileNavButton(
+                  icon: Icons.restaurant_menu,
+                  label: 'Menu',
+                  isActive: !_showLeftPanel && !_showRightPanel,
+                  onTap: () => _showMenuPanel(),
+                ),
+                const SizedBox(width: 8),
+                _buildMobileNavButton(
+                  icon: Icons.category,
+                  label: 'Categories',
+                  isActive: _showRightPanel,
+                  onTap: () => _toggleRightPanel(),
+                ),
+              ],
+            ),
+          ),
+          
+          // Status Counters and Action Buttons
+          Consumer<POSProvider>(
+            builder: (context, posProvider, child) {
+              return Row(
+                children: [
+                  _buildStatusChip('🔥', posProvider.statusCounters[ItemStatus.fire] ?? 0),
+                  const SizedBox(width: 4),
+                  _buildStatusChip('⏸️', posProvider.statusCounters[ItemStatus.hold] ?? 0),
+                  const SizedBox(width: 4),
+                  _buildStatusChip('✅', posProvider.statusCounters[ItemStatus.served] ?? 0),
+                  const SizedBox(width: 8),
+                  // Send to Kitchen Button
+                  ElevatedButton.icon(
+                    onPressed: () => _sendToKitchen(posProvider),
+                    icon: const Icon(Icons.restaurant_menu, size: 16),
+                    label: const Text('Send', style: TextStyle(fontSize: 10)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileNavButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFF4fc3f7).withOpacity(0.2) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isActive ? const Color(0xFF4fc3f7) : Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: isActive ? const Color(0xFF4fc3f7) : Colors.white54,
+                size: 20,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isActive ? const Color(0xFF4fc3f7) : Colors.white54,
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(String emoji, int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 2),
+          Text(
+            count.toString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleLeftPanel() {
+    setState(() {
+      _showLeftPanel = !_showLeftPanel;
+      if (_showLeftPanel) {
+        _showRightPanel = false;
+      }
+    });
+  }
+
+  void _toggleRightPanel() {
+    setState(() {
+      _showRightPanel = !_showRightPanel;
+      if (_showRightPanel) {
+        _showLeftPanel = false;
+      }
+    });
+  }
+
+  void _showMenuPanel() {
+    setState(() {
+      _showLeftPanel = false;
+      _showRightPanel = false;
+    });
   }
 
   Widget _buildTablePanel(POSProvider posProvider) {
@@ -165,17 +401,17 @@ class _POSScreenState extends State<POSScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => _sendToKitchen(posProvider),
+                        onPressed: () => _mergeTable(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
+                          backgroundColor: const Color(0xFF4fc3f7),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.restaurant_menu, size: 18),
+                            Icon(Icons.table_restaurant, size: 18),
                             SizedBox(width: 8),
-                            Text('Send to Kitchen'),
+                            Text('Merge Table'),
                           ],
                         ),
                       ),
@@ -414,7 +650,7 @@ class _POSScreenState extends State<POSScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.2),
-        border: const Border(
+        border: _isMobile ? null : const Border(
           right: BorderSide(color: Colors.white, width: 0.1),
         ),
       ),
@@ -439,8 +675,31 @@ class _POSScreenState extends State<POSScreen> {
                     color: Color(0xFF4fc3f7),
                   ),
                 ),
+                Row(
+                  children: [
+                    // Desktop Panel Toggle Buttons
+                    if (!_isMobile) ...[
+                      IconButton(
+                        onPressed: () => setState(() => _showLeftPanel = !_showLeftPanel),
+                        icon: Icon(
+                          _showLeftPanel ? Icons.chevron_left : Icons.chevron_right,
+                          color: Colors.white54,
+                        ),
+                        tooltip: _showLeftPanel ? 'Hide Orders Panel' : 'Show Orders Panel',
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => _showRightPanel = !_showRightPanel),
+                        icon: Icon(
+                          _showRightPanel ? Icons.chevron_right : Icons.chevron_left,
+                          color: Colors.white54,
+                        ),
+                        tooltip: _showRightPanel ? 'Hide Categories Panel' : 'Show Categories Panel',
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    // Search Bar
                 Container(
-                  width: 200,
+                      width: _isMobile ? 150 : 200,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
@@ -460,6 +719,8 @@ class _POSScreenState extends State<POSScreen> {
                       icon: Icon(Icons.search, color: Colors.white54),
                     ),
                   ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -467,7 +728,9 @@ class _POSScreenState extends State<POSScreen> {
           
           // Menu Items List (Scrollable for mobile/tablet)
           Expanded(
-            child: ListView.builder(
+            child: _isMobile 
+                ? _buildMobileMenuGrid(posProvider)
+                : ListView.builder(
               padding: const EdgeInsets.all(20),
               itemCount: _getFilteredItems(posProvider).length,
               itemBuilder: (context, index) {
@@ -718,82 +981,45 @@ class _POSScreenState extends State<POSScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.25),
+        border: _isMobile ? null : const Border(
+          left: BorderSide(color: Colors.white, width: 0.1),
+        ),
       ),
       child: Column(
         children: [
-          // Categories
+          // Categories Header
           Container(
             padding: const EdgeInsets.all(20),
-            child: const Text(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
               'Categories',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF4fc3f7),
               ),
+                ),
+                if (_isMobile)
+                  IconButton(
+                    onPressed: () => _showMenuPanel(),
+                    icon: const Icon(Icons.close, color: Colors.white54),
+                    tooltip: 'Close Categories',
+                  ),
+              ],
             ),
           ),
           
           Expanded(
-            child: ListView.builder(
+            child: _isMobile 
+                ? _buildMobileCategoryGrid()
+                : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               itemCount: MenuCategory.values.length,
               itemBuilder: (context, index) {
                 final category = MenuCategory.values[index];
-                final isSelected = category == _selectedCategory;
-                
-                return Container(
-                  key: ValueKey('category_${category.name}'),
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        print('Category tapped: ${category.displayName}');
-                        try {
-                          setState(() {
-                            _selectedCategory = category;
-                            _searchQuery = '';
-                          });
-                          print('Category changed to: ${category.displayName}');
-                        } catch (e, stackTrace) {
-                          print('Error changing category: $e');
-                          print('Stack trace: $stackTrace');
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isSelected 
-                              ? const Color(0xFF2196f3).withOpacity(0.3)
-                              : Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isSelected ? const Color(0xFF2196f3) : Colors.white.withOpacity(0.1),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              category.emoji,
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              category.displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                      return _buildCategoryItem(category);
               },
             ),
           ),
@@ -860,6 +1086,281 @@ class _POSScreenState extends State<POSScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMobileMenuGrid(POSProvider posProvider) {
+    final items = _getFilteredItems(posProvider);
+    
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return _buildMobileMenuItemCard(item, posProvider);
+      },
+    );
+  }
+
+  Widget _buildMobileMenuItemCard(MenuItem item, POSProvider posProvider) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showCustomerSelectionDialog(item, posProvider),
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Item Icon
+                Center(
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        item.icon,
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
+                // Item Name
+                Text(
+                  item.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                
+                // Item Description
+                Text(
+                  item.description,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 10,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Spacer(),
+                
+                // Price and Add Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '₹${item.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Color(0xFF4caf50),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _showCustomerSelectionDialog(item, posProvider),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4fc3f7),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text(
+                        'Add',
+                        style: TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileCategoryGrid() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category Selection Header
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.category,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Select Category',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                if (_selectedCategory != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2196f3),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _selectedCategory!.displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Category Grid
+          Expanded(
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.1,
+              ),
+              itemCount: MenuCategory.values.length,
+              itemBuilder: (context, index) {
+                final category = MenuCategory.values[index];
+                return _buildCategoryItem(category, isMobile: true);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(MenuCategory category, {bool isMobile = false}) {
+    final isSelected = category == _selectedCategory;
+    
+    return Container(
+      key: ValueKey('category_${category.name}'),
+      margin: isMobile ? null : const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: () {
+          print('Category tapped: ${category.displayName}');
+          try {
+            setState(() {
+              _selectedCategory = category;
+              _searchQuery = '';
+            });
+            print('Category changed to: ${category.displayName}');
+            
+            // On mobile, switch to menu panel after selecting category
+            if (_isMobile) {
+              _showMenuPanel();
+            }
+          } catch (e, stackTrace) {
+            print('Error changing category: $e');
+            print('Stack trace: $stackTrace');
+          }
+        },
+        child: Container(
+            padding: EdgeInsets.all(isMobile ? 16 : 12),
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? const Color(0xFF2196f3).withOpacity(0.3)
+                  : Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? const Color(0xFF2196f3) : Colors.white.withOpacity(0.1),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Category Icon with better styling
+                Container(
+                  width: isMobile ? 50 : 40,
+                  height: isMobile ? 50 : 40,
+                  decoration: BoxDecoration(
+                    color: isSelected 
+                        ? Colors.white.withOpacity(0.2)
+                        : Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(isMobile ? 25 : 20),
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      category.emoji,
+                      style: TextStyle(fontSize: isMobile ? 24 : 18),
+                    ),
+                  ),
+                ),
+                SizedBox(height: isMobile ? 8 : 5),
+                Text(
+                  category.displayName,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontSize: isMobile ? 12 : 10,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isSelected)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
     );
   }
 
@@ -980,5 +1481,10 @@ class _POSScreenState extends State<POSScreen> {
         builder: (context) => const KitchenScreen(),
       ),
     );
+  }
+
+  void _mergeTable() {
+    // Navigate back to floor layout to select another table
+    Navigator.of(context).pop();
   }
 }
