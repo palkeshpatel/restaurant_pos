@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
 import '../models/table_model.dart';
 import 'bill_screen.dart';
+import 'pos_screen.dart';
+import 'settings_screen.dart';
 import 'dart:async';
 
 class KitchenScreen extends StatefulWidget {
@@ -65,6 +67,9 @@ class _KitchenScreenState extends State<KitchenScreen> {
         child: SafeArea(
           child: Column(
             children: [
+              // Mobile Top Navigation Bar
+              if (_isMobile) _buildMobileTopNav(),
+              
               // Header
               Container(
                 padding: const EdgeInsets.all(20),
@@ -85,6 +90,107 @@ class _KitchenScreenState extends State<KitchenScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildMobileTopNav() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1a2a3a),
+        border: Border(
+          bottom: BorderSide(color: Colors.white, width: 0.1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.description_outlined,
+              label: 'Orders',
+              isActive: false,
+              onTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const POSScreen()),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.restaurant_menu,
+              label: 'Menu',
+              isActive: false,
+              onTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const POSScreen()),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.grid_view,
+              label: 'Categories',
+              isActive: false,
+              onTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const POSScreen()),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.room_service,
+              label: 'Kitchen',
+              isActive: true,
+              onTap: () {},
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.settings,
+              label: 'Setting',
+              isActive: false,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildNavButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF2196f3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? Colors.white : Colors.white70,
+              size: 22,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.white70,
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );

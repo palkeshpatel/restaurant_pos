@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
+import 'pos_screen.dart';
+import 'kitchen_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,17 +25,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+    
     return Scaffold(
       backgroundColor: const Color(0xFF1a2a3a),
-      appBar: AppBar(
-        title: const Text(
-          '⚙️ Settings',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF1a2a3a),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Consumer<SettingsProvider>(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Mobile Top Navigation Bar
+            if (isMobile) _buildMobileTopNav(),
+            
+            // Settings Content
+            Expanded(
+              child: Consumer<SettingsProvider>(
         builder: (context, settingsProvider, child) {
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -160,6 +164,111 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           );
         },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildMobileTopNav() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1a2a3a),
+        border: Border(
+          bottom: BorderSide(color: Colors.white, width: 0.1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.description_outlined,
+              label: 'Orders',
+              isActive: false,
+              onTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const POSScreen()),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.restaurant_menu,
+              label: 'Menu',
+              isActive: false,
+              onTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const POSScreen()),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.grid_view,
+              label: 'Categories',
+              isActive: false,
+              onTap: () => Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const POSScreen()),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.room_service,
+              label: 'Kitchen',
+              isActive: false,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const KitchenScreen()),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _buildNavButton(
+              icon: Icons.settings,
+              label: 'Setting',
+              isActive: true,
+              onTap: () {},
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildNavButton({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF2196f3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? Colors.white : Colors.white70,
+              size: 22,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.white : Colors.white70,
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
