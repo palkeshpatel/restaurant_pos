@@ -266,6 +266,7 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
   Widget _buildDesktopTableGrid() {
     return Container(
       margin: EdgeInsets.all(_getResponsiveMargin(20)),
+      constraints: BoxConstraints.expand(),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
@@ -285,18 +286,28 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
             ),
             child: Consumer<POSProvider>(
               builder: (context, posProvider, child) {
-                return Stack(
-                  children: posProvider.tables.map((table) {
-                    final position = _getResponsiveTablePosition(table.id, constraints);
-                    return Positioned(
-                      left: position.dx,
-                      top: position.dy,
-                      child: GestureDetector(
-                        onTap: () => _handleTableTap(table.id),
-                        child: _buildResponsiveTableWidget(table, constraints),
-                      ),
-                    );
-                  }).toList(),
+                final totalTables = posProvider.tables.length;
+                final (tablesPerRow, baseSpacing) = _getTableGridConfig();
+                final totalRows = (totalTables / tablesPerRow).ceil();
+                final tableSize = _getResponsiveTableSize(constraints.maxWidth);
+                final spacing = (constraints.maxWidth / tablesPerRow).clamp(baseSpacing * 0.8, baseSpacing * 1.2);
+                final gridHeight = totalRows * tableSize + (totalRows - 1) * spacing + 20; // Add some padding
+
+                return SizedBox(
+                  height: gridHeight,
+                  child: Stack(
+                    children: posProvider.tables.map((table) {
+                      final position = _getResponsiveTablePosition(table.id, constraints);
+                      return Positioned(
+                        left: position.dx - tableSize / 2,
+                        top: position.dy - tableSize / 2,
+                        child: GestureDetector(
+                          onTap: () => _handleTableTap(table.id),
+                          child: _buildResponsiveTableWidget(table, constraints),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 );
               },
             ),
@@ -484,48 +495,57 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
     // Responsive grid layout that adapts to container size and device type
     final containerWidth = constraints.maxWidth;
     final containerHeight = constraints.maxHeight;
+    final totalTables = context.read<POSProvider>().tables.length;
 
     // Different table configurations based on device type
     final (tablesPerRow, baseSpacing) = _getTableGridConfig();
 
-    final spacing = (containerWidth / tablesPerRow).clamp(baseSpacing, baseSpacing * 1.5);
-    final tableSize = (spacing * 0.6).clamp(60.0, _getMaxTableSize());
+    // Calculate responsive spacing based on container size
+    final padding = 30.0; // Padding for better visibility
+    final availableWidth = containerWidth - (padding * 2);
+    final spacing = (availableWidth / tablesPerRow).clamp(baseSpacing * 0.8, baseSpacing * 1.2);
+    final tableSize = (spacing * 0.7).clamp(50.0, _getMaxTableSize());
 
     final row = (tableId - 1) ~/ tablesPerRow;
     final col = (tableId - 1) % tablesPerRow;
 
-    // Center the grid within the container
-    final totalGridWidth = (tablesPerRow - 1) * spacing;
-    final totalGridHeight = (context.read<POSProvider>().tables.length / tablesPerRow).ceil() * spacing;
+    // Calculate total rows needed
+    final totalRows = (totalTables / tablesPerRow).ceil();
 
-    final startX = (containerWidth - totalGridWidth) / 2;
-    final startY = (containerHeight - totalGridHeight) / 2;
+    // Calculate grid dimensions including proper spacing
+    final gridWidth = tablesPerRow * tableSize + (tablesPerRow - 1) * spacing;
+    final gridHeight = totalRows * tableSize + (totalRows - 1) * spacing;
 
-    return Offset(
-      startX + col * spacing - tableSize / 2,
-      startY + row * spacing - tableSize / 2,
-    );
+    // Center the grid within the container with proper bounds checking
+    final startX = padding;
+    final startY = (containerHeight - gridHeight) / 2;
+
+    // Ensure positions are within bounds and don't cause overflow
+    final x = (startX + col * (tableSize + spacing)).clamp(tableSize / 2, containerWidth - tableSize / 2);
+    final y = (startY + row * (tableSize + spacing)).clamp(tableSize / 2, containerHeight - tableSize / 2);
+
+    return Offset(x, y);
   }
 
   (int, double) _getTableGridConfig() {
     switch (_deviceType) {
       case DeviceType.mobile:
-        return (3, 120.0); // 3 columns for mobile
+        return (3, 100.0); // 3 columns for mobile, tighter spacing
       case DeviceType.tablet:
-        return (4, 140.0); // 4 columns for tablet
+        return (4, 120.0); // 4 columns for tablet, balanced spacing
       case DeviceType.desktop:
-        return (5, 160.0); // 5 columns for desktop
+        return (6, 140.0); // 6 columns for desktop, more spacious
     }
   }
 
   double _getMaxTableSize() {
     switch (_deviceType) {
       case DeviceType.mobile:
-        return 100.0;
+        return 80.0;
       case DeviceType.tablet:
-        return 120.0;
+        return 100.0;
       case DeviceType.desktop:
-        return 140.0;
+        return 120.0;
     }
   }
 
@@ -562,8 +582,12 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            table.isJoined ? '🔗' : '🍽️',
-            style: TextStyle(fontSize: _getResponsiveEmojiSize(tableSize)),
+            table.isJoined ? 'JOIN' : 'TABLE',
+            style: TextStyle(
+              fontSize: _getResponsiveEmojiSize(tableSize) * 0.8,
+              fontWeight: FontWeight.bold,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
           ),
           Text(
             table.name,
@@ -588,7 +612,7 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
 
   double _getResponsiveTableSize(double containerWidth) {
     final (_, baseSpacing) = _getTableGridConfig();
-    return (baseSpacing * 0.6).clamp(60.0, _getMaxTableSize());
+    return (baseSpacing * 0.65).clamp(50.0, _getMaxTableSize());
   }
 
   double _getResponsiveBorderWidth() {
@@ -767,23 +791,31 @@ class FloorLayoutPainter extends CustomPainter {
     final containerWidth = containerSize.width;
     final containerHeight = containerSize.height;
 
-    final spacing = (containerWidth / tablesPerRow).clamp(baseSpacing, baseSpacing * 1.5);
-    final tableSize = (spacing * 0.6).clamp(60.0, maxTableSize);
+    // Calculate responsive spacing based on container size
+    final padding = 30.0; // Padding for better visibility
+    final availableWidth = containerWidth - (padding * 2);
+    final spacing = (availableWidth / tablesPerRow).clamp(baseSpacing * 0.8, baseSpacing * 1.2);
+    final tableSize = (spacing * 0.7).clamp(50.0, maxTableSize);
 
     final row = (tableId - 1) ~/ tablesPerRow;
     final col = (tableId - 1) % tablesPerRow;
 
-    // Center the grid within the container
-    final totalGridWidth = (tablesPerRow - 1) * spacing;
-    final totalGridHeight = (tables.length / tablesPerRow).ceil() * spacing;
+    // Calculate total rows needed
+    final totalRows = (tables.length / tablesPerRow).ceil();
 
-    final startX = (containerWidth - totalGridWidth) / 2;
-    final startY = (containerHeight - totalGridHeight) / 2;
+    // Calculate grid dimensions including proper spacing
+    final gridWidth = tablesPerRow * tableSize + (tablesPerRow - 1) * spacing;
+    final gridHeight = totalRows * tableSize + (totalRows - 1) * spacing;
 
-    return Offset(
-      startX + col * spacing - tableSize / 2,
-      startY + row * spacing - tableSize / 2,
-    );
+    // Center the grid within the container with proper bounds checking
+    final startX = padding;
+    final startY = (containerHeight - gridHeight) / 2;
+
+    // Ensure positions are within bounds and don't cause overflow
+    final x = (startX + col * (tableSize + spacing)).clamp(tableSize / 2, containerWidth - tableSize / 2);
+    final y = (startY + row * (tableSize + spacing)).clamp(tableSize / 2, containerHeight - tableSize / 2);
+
+    return Offset(x, y);
   }
 
   Offset _getTablePosition(int tableId) {
