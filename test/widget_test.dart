@@ -5,7 +5,6 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:restaurant_pos/main.dart';
@@ -16,6 +15,6 @@ void main() {
     await tester.pumpWidget(const RestaurantPOSApp());
 
     // Verify that the login screen is displayed
-    expect(find.text('Enter PIN'), findsOneWidget);
+    expect(find.text('Enter 6-digit PIN to continue'), findsOneWidget);
   });
 }

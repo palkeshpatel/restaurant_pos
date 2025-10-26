@@ -4,6 +4,12 @@ import '../providers/pos_provider.dart';
 import '../models/table_model.dart';
 import 'pos_screen.dart';
 
+enum DeviceType {
+  mobile,
+  tablet,
+  desktop,
+}
+
 class FloorLayoutScreen extends StatefulWidget {
   const FloorLayoutScreen({super.key});
 
@@ -14,7 +20,7 @@ class FloorLayoutScreen extends StatefulWidget {
 class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
   int? _selectedTableId;
   List<int> _joiningTables = [];
-  bool _isMobile = false;
+  DeviceType _deviceType = DeviceType.mobile;
 
   @override
   void didChangeDependencies() {
@@ -24,13 +30,20 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
 
   void _checkScreenSize() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    // More responsive breakpoints for better tablet support
-    final isMobile = screenWidth < 1024 || (screenWidth < 1200 && screenHeight < 800);
-    
-    if (_isMobile != isMobile) {
+
+    // Improved responsive breakpoints
+    DeviceType newDeviceType;
+    if (screenWidth < 768) {
+      newDeviceType = DeviceType.mobile;
+    } else if (screenWidth < 1200) {
+      newDeviceType = DeviceType.tablet;
+    } else {
+      newDeviceType = DeviceType.desktop;
+    }
+
+    if (_deviceType != newDeviceType) {
       setState(() {
-        _isMobile = isMobile;
+        _deviceType = newDeviceType;
       });
     }
   }
@@ -54,142 +67,52 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
             children: [
               // Header
               Container(
-                padding: EdgeInsets.all(_isMobile ? 16 : 20),
-                child: _isMobile 
-                    ? _buildMobileHeader()
-                    : _buildDesktopHeader(),
+                padding: EdgeInsets.all(_getResponsivePadding()),
+                child: _buildResponsiveHeader(),
               ),
-              
+
               // Instructions
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
+                margin: EdgeInsets.symmetric(horizontal: _getResponsiveMargin()),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.2),
+                  color: Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.blue),
                 ),
-                child: const Text(
+                child: Text(
                   'Tap a table to select it, tap another table to join them, then tap "Enter Table" to start taking orders',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
+                    fontSize: _getResponsiveFontSize(14),
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
-              
-              const SizedBox(height: 20),
-              
+
+              SizedBox(height: _getResponsiveSpacing(20)),
+
               // Floor Layout
               Expanded(
-                child: _isMobile 
-                    ? _buildMobileTableGrid()
-                    : _buildDesktopTableGrid(),
+                child: _buildResponsiveTableGrid(),
               ),
-              
+
               // Action Buttons
               Container(
-                padding: EdgeInsets.all(_isMobile ? 16 : 20),
-                child: _isMobile 
-                    ? Column(
-                        children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _selectedTableId != null ? _enterTable : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text(
-                                'Enter Table',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _joiningTables.length >= 2 ? _joinTables : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4fc3f7),
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: Text(
-                                'Join Tables (${_joiningTables.length}/2)',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _joiningTables.length >= 2 ? _joinTables : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4fc3f7),
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: Text(
-                                'Join Tables (${_joiningTables.length}/2)',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _selectedTableId != null ? _enterTable : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.symmetric(vertical: 15),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text(
-                                'Enter Table',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                padding: EdgeInsets.all(_getResponsivePadding()),
+                child: _buildResponsiveActionButtons(),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildResponsiveHeader() {
+    return _deviceType == DeviceType.mobile
+        ? _buildMobileHeader()
+        : _buildDesktopHeader();
   }
 
   Widget _buildMobileHeader() {
@@ -201,7 +124,7 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
             Text(
               'Restaurant Floor Layout',
               style: TextStyle(
-                fontSize: _isMobile ? 18 : 24,
+                fontSize: _getResponsiveFontSize(18),
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -210,10 +133,10 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
               builder: (context, posProvider, child) {
                 return IconButton(
                   onPressed: () => posProvider.logout(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.logout,
                     color: Colors.white,
-                    size: 24,
+                    size: _getResponsiveIconSize(24),
                   ),
                 );
               },
@@ -248,10 +171,10 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
+        Text(
           'Restaurant Floor Layout',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: _getResponsiveFontSize(24),
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
@@ -262,10 +185,10 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
               builder: (context, posProvider, child) {
                 return IconButton(
                   onPressed: () => posProvider.logout(),
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.logout,
                     color: Colors.white,
-                    size: 28,
+                    size: _getResponsiveIconSize(28),
                   ),
                 );
               },
@@ -295,6 +218,16 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
     );
   }
 
+  Widget _buildResponsiveTableGrid() {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return _buildMobileTableGrid();
+      case DeviceType.tablet:
+      case DeviceType.desktop:
+        return _buildDesktopTableGrid();
+    }
+  }
+
   Widget _buildMobileTableGrid() {
     return Consumer<POSProvider>(
       builder: (context, posProvider, child) {
@@ -303,8 +236,8 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
             // Responsive grid based on screen size
             final screenWidth = constraints.maxWidth;
             final crossAxisCount = screenWidth > 600 ? 4 : 3;
-            final spacing = screenWidth > 600 ? 16.0 : 12.0;
-            
+            final spacing = _getResponsiveSpacing(12);
+
             return Container(
               margin: EdgeInsets.all(spacing),
               child: GridView.builder(
@@ -332,9 +265,9 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
 
   Widget _buildDesktopTableGrid() {
     return Container(
-      margin: const EdgeInsets.all(20),
+      margin: EdgeInsets.all(_getResponsiveMargin(20)),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: LayoutBuilder(
@@ -345,6 +278,10 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
               selectedTableId: _selectedTableId,
               groupTables: _joiningTables,
               containerSize: Size(constraints.maxWidth, constraints.maxHeight),
+              deviceType: _deviceType,
+              tablesPerRow: _getTableGridConfig().$1,
+              baseSpacing: _getTableGridConfig().$2,
+              maxTableSize: _getMaxTableSize(),
             ),
             child: Consumer<POSProvider>(
               builder: (context, posProvider, child) {
@@ -369,6 +306,102 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
     );
   }
 
+  Widget _buildResponsiveActionButtons() {
+    return _deviceType == DeviceType.mobile
+        ? Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _selectedTableId != null ? _enterTable : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: EdgeInsets.symmetric(vertical: _getResponsiveButtonPadding()),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Enter Table',
+                    style: TextStyle(
+                      fontSize: _getResponsiveFontSize(16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: _getResponsiveSpacing(12)),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _joiningTables.length >= 2 ? _joinTables : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4fc3f7),
+                    padding: EdgeInsets.symmetric(vertical: _getResponsiveButtonPadding()),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Join Tables (${_joiningTables.length}/2)',
+                    style: TextStyle(
+                      fontSize: _getResponsiveFontSize(16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _joiningTables.length >= 2 ? _joinTables : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4fc3f7),
+                    padding: EdgeInsets.symmetric(vertical: _getResponsiveButtonPadding()),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Join Tables (${_joiningTables.length}/2)',
+                    style: TextStyle(
+                      fontSize: _getResponsiveFontSize(16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: _getResponsiveSpacing(16)),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _selectedTableId != null ? _enterTable : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: EdgeInsets.symmetric(vertical: _getResponsiveButtonPadding()),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Text(
+                    'Enter Table',
+                    style: TextStyle(
+                      fontSize: _getResponsiveFontSize(16),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+  }
+
   Widget _buildMobileTableCard(TableModel table) {
     final isSelected = _selectedTableId == table.id;
     final isJoining = _joiningTables.contains(table.id);
@@ -386,8 +419,8 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
             color: isSelected || isJoining 
                 ? const Color(0xFF4fc3f7) 
                 : table.isOccupied 
-                    ? Colors.red.withOpacity(0.7)
-                    : Colors.green.withOpacity(0.7),
+                    ? Colors.red.withValues(alpha: 0.7)
+                    : Colors.green.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected ? Colors.white : Colors.transparent,
@@ -395,7 +428,7 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -426,7 +459,7 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
                     vertical: cardSize * 0.02,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -445,123 +478,82 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
     );
   }
 
-  Widget _buildTableWidget(TableModel table) {
-    final isSelected = _selectedTableId == table.id;
-    final isJoining = _joiningTables.contains(table.id);
-    
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        color: isSelected || isJoining 
-            ? const Color(0xFF4fc3f7) 
-            : table.isOccupied 
-                ? Colors.red.withOpacity(0.7)
-                : Colors.green.withOpacity(0.7),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isSelected ? Colors.white : Colors.transparent,
-          width: 3,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            table.isJoined ? '🔗' : '🍽️',
-            style: const TextStyle(fontSize: 24),
-          ),
-          Text(
-            table.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-          if (table.isOccupied)
-            const Text(
-              'Occupied',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 8,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 
-  Offset _getTablePosition(int tableId) {
-    // Create a grid layout for tables
-    const double spacing = 120;
-    const int tablesPerRow = 4;
-    
-    final row = (tableId - 1) ~/ tablesPerRow;
-    final col = (tableId - 1) % tablesPerRow;
-    
-    return Offset(
-      col * spacing + 40,
-      row * spacing + 40,
-    );
-  }
 
   Offset _getResponsiveTablePosition(int tableId, BoxConstraints constraints) {
-    // Responsive grid layout that adapts to container size
+    // Responsive grid layout that adapts to container size and device type
     final containerWidth = constraints.maxWidth;
     final containerHeight = constraints.maxHeight;
-    
-    // Calculate optimal grid based on container size
-    final tablesPerRow = (containerWidth / 150).floor().clamp(3, 6);
-    final spacing = (containerWidth / tablesPerRow).clamp(100.0, 200.0);
-    final tableSize = (spacing * 0.6).clamp(60.0, 120.0);
-    
+
+    // Different table configurations based on device type
+    final (tablesPerRow, baseSpacing) = _getTableGridConfig();
+
+    final spacing = (containerWidth / tablesPerRow).clamp(baseSpacing, baseSpacing * 1.5);
+    final tableSize = (spacing * 0.6).clamp(60.0, _getMaxTableSize());
+
     final row = (tableId - 1) ~/ tablesPerRow;
     final col = (tableId - 1) % tablesPerRow;
-    
+
     // Center the grid within the container
-    final startX = (containerWidth - (tablesPerRow - 1) * spacing) / 2;
-    final startY = (containerHeight - (row * spacing)) / 2;
-    
+    final totalGridWidth = (tablesPerRow - 1) * spacing;
+    final totalGridHeight = (context.read<POSProvider>().tables.length / tablesPerRow).ceil() * spacing;
+
+    final startX = (containerWidth - totalGridWidth) / 2;
+    final startY = (containerHeight - totalGridHeight) / 2;
+
     return Offset(
       startX + col * spacing - tableSize / 2,
       startY + row * spacing - tableSize / 2,
     );
   }
 
+  (int, double) _getTableGridConfig() {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return (3, 120.0); // 3 columns for mobile
+      case DeviceType.tablet:
+        return (4, 140.0); // 4 columns for tablet
+      case DeviceType.desktop:
+        return (5, 160.0); // 5 columns for desktop
+    }
+  }
+
+  double _getMaxTableSize() {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return 100.0;
+      case DeviceType.tablet:
+        return 120.0;
+      case DeviceType.desktop:
+        return 140.0;
+    }
+  }
+
   Widget _buildResponsiveTableWidget(TableModel table, BoxConstraints constraints) {
     final isSelected = _selectedTableId == table.id;
     final isJoining = _joiningTables.contains(table.id);
-    
-    // Responsive table size based on container
-    final containerWidth = constraints.maxWidth;
-    final tableSize = (containerWidth / 8).clamp(60.0, 120.0);
-    
+
+    // Responsive table size based on device type
+    final tableSize = _getResponsiveTableSize(constraints.maxWidth);
+
     return Container(
       width: tableSize,
       height: tableSize,
       decoration: BoxDecoration(
-        color: isSelected || isJoining 
-            ? const Color(0xFF4fc3f7) 
-            : table.isOccupied 
-                ? Colors.red.withOpacity(0.7)
-                : Colors.green.withOpacity(0.7),
+        color: isSelected || isJoining
+            ? const Color(0xFF4fc3f7)
+            : table.isOccupied
+                ? Colors.red.withValues(alpha: 0.7)
+                : Colors.green.withValues(alpha: 0.7),
         shape: BoxShape.circle,
         border: Border.all(
           color: isSelected ? Colors.white : Colors.transparent,
-          width: 3,
+          width: _getResponsiveBorderWidth(),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: _getResponsiveBlurRadius(),
             offset: const Offset(0, 4),
           ),
         ],
@@ -571,14 +563,14 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
         children: [
           Text(
             table.isJoined ? '🔗' : '🍽️',
-            style: TextStyle(fontSize: (tableSize * 0.3).clamp(16.0, 32.0)),
+            style: TextStyle(fontSize: _getResponsiveEmojiSize(tableSize)),
           ),
           Text(
             table.name,
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,
-              fontSize: (tableSize * 0.15).clamp(8.0, 16.0),
+              fontSize: _getResponsiveTableTextSize(tableSize),
             ),
           ),
           if (table.isOccupied)
@@ -586,12 +578,51 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
               'Occupied',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: (tableSize * 0.1).clamp(6.0, 12.0),
+                fontSize: _getResponsiveSmallTextSize(tableSize),
               ),
             ),
         ],
       ),
     );
+  }
+
+  double _getResponsiveTableSize(double containerWidth) {
+    final (_, baseSpacing) = _getTableGridConfig();
+    return (baseSpacing * 0.6).clamp(60.0, _getMaxTableSize());
+  }
+
+  double _getResponsiveBorderWidth() {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return 2.0;
+      case DeviceType.tablet:
+        return 2.5;
+      case DeviceType.desktop:
+        return 3.0;
+    }
+  }
+
+  double _getResponsiveBlurRadius() {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return 6.0;
+      case DeviceType.tablet:
+        return 8.0;
+      case DeviceType.desktop:
+        return 10.0;
+    }
+  }
+
+  double _getResponsiveEmojiSize(double tableSize) {
+    return (tableSize * 0.3).clamp(16.0, 32.0);
+  }
+
+  double _getResponsiveTableTextSize(double tableSize) {
+    return (tableSize * 0.15).clamp(8.0, 16.0);
+  }
+
+  double _getResponsiveSmallTextSize(double tableSize) {
+    return (tableSize * 0.1).clamp(6.0, 12.0);
   }
 
   void _handleTableTap(int tableId) {
@@ -653,39 +684,45 @@ class FloorLayoutPainter extends CustomPainter {
   final int? selectedTableId;
   final List<int> groupTables;
   final Size? containerSize;
+  final DeviceType deviceType;
+  final int tablesPerRow;
+  final double baseSpacing;
+  final double maxTableSize;
 
   FloorLayoutPainter({
     required this.tables,
     required this.selectedTableId,
     required this.groupTables,
     this.containerSize,
+    this.deviceType = DeviceType.mobile,
+    this.tablesPerRow = 3,
+    this.baseSpacing = 120.0,
+    this.maxTableSize = 120.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
-      ..strokeWidth = 2;
+      ..color = Colors.white.withValues(alpha: 0.3)
+      ..strokeWidth = _getResponsiveStrokeWidth();
 
     // Use responsive positioning if container size is provided
     final useResponsive = containerSize != null;
-    
+
     // Draw connection lines for joined tables
     for (int i = 0; i < groupTables.length - 1; i++) {
-      final startPos = useResponsive 
+      final startPos = useResponsive
           ? _getResponsiveTablePosition(groupTables[i], containerSize!)
           : _getTablePosition(groupTables[i]);
-      final endPos = useResponsive 
+      final endPos = useResponsive
           ? _getResponsiveTablePosition(groupTables[i + 1], containerSize!)
           : _getTablePosition(groupTables[i + 1]);
-      
-      final tableSize = useResponsive 
-          ? (containerSize!.width / 8).clamp(60.0, 120.0) / 2
-          : 40.0;
-      
+
+      final tableRadius = maxTableSize / 2;
+
       canvas.drawLine(
-        Offset(startPos.dx + tableSize, startPos.dy + tableSize),
-        Offset(endPos.dx + tableSize, endPos.dy + tableSize),
+        Offset(startPos.dx + tableRadius, startPos.dy + tableRadius),
+        Offset(endPos.dx + tableRadius, endPos.dy + tableRadius),
         paint,
       );
     }
@@ -694,25 +731,59 @@ class FloorLayoutPainter extends CustomPainter {
     for (final table in tables) {
       if (table.isJoined) {
         for (final joinedTableId in table.joinedTables) {
-          final startPos = useResponsive 
+          final startPos = useResponsive
               ? _getResponsiveTablePosition(table.id, containerSize!)
               : _getTablePosition(table.id);
-          final endPos = useResponsive 
+          final endPos = useResponsive
               ? _getResponsiveTablePosition(joinedTableId, containerSize!)
               : _getTablePosition(joinedTableId);
-          
-          final tableSize = useResponsive 
-              ? (containerSize!.width / 8).clamp(60.0, 120.0) / 2
-              : 40.0;
-          
+
+          final tableRadius = maxTableSize / 2;
+
           canvas.drawLine(
-            Offset(startPos.dx + tableSize, startPos.dy + tableSize),
-            Offset(endPos.dx + tableSize, endPos.dy + tableSize),
+            Offset(startPos.dx + tableRadius, startPos.dy + tableRadius),
+            Offset(endPos.dx + tableRadius, endPos.dy + tableRadius),
             paint..color = const Color(0xFF4fc3f7),
           );
         }
       }
     }
+  }
+
+  double _getResponsiveStrokeWidth() {
+    switch (deviceType) {
+      case DeviceType.mobile:
+        return 2.0;
+      case DeviceType.tablet:
+        return 2.5;
+      case DeviceType.desktop:
+        return 3.0;
+    }
+  }
+
+
+  Offset _getResponsiveTablePosition(int tableId, Size containerSize) {
+    // Responsive grid layout that adapts to container size and device type
+    final containerWidth = containerSize.width;
+    final containerHeight = containerSize.height;
+
+    final spacing = (containerWidth / tablesPerRow).clamp(baseSpacing, baseSpacing * 1.5);
+    final tableSize = (spacing * 0.6).clamp(60.0, maxTableSize);
+
+    final row = (tableId - 1) ~/ tablesPerRow;
+    final col = (tableId - 1) % tablesPerRow;
+
+    // Center the grid within the container
+    final totalGridWidth = (tablesPerRow - 1) * spacing;
+    final totalGridHeight = (tables.length / tablesPerRow).ceil() * spacing;
+
+    final startX = (containerWidth - totalGridWidth) / 2;
+    final startY = (containerHeight - totalGridHeight) / 2;
+
+    return Offset(
+      startX + col * spacing - tableSize / 2,
+      startY + row * spacing - tableSize / 2,
+    );
   }
 
   Offset _getTablePosition(int tableId) {
@@ -728,29 +799,76 @@ class FloorLayoutPainter extends CustomPainter {
     );
   }
 
-  Offset _getResponsiveTablePosition(int tableId, Size containerSize) {
-    // Responsive grid layout that adapts to container size
-    final containerWidth = containerSize.width;
-    final containerHeight = containerSize.height;
-    
-    // Calculate optimal grid based on container size
-    final tablesPerRow = (containerWidth / 150).floor().clamp(3, 6);
-    final spacing = (containerWidth / tablesPerRow).clamp(100.0, 200.0);
-    final tableSize = (spacing * 0.6).clamp(60.0, 120.0);
-    
-    final row = (tableId - 1) ~/ tablesPerRow;
-    final col = (tableId - 1) % tablesPerRow;
-    
-    // Center the grid within the container
-    final startX = (containerWidth - (tablesPerRow - 1) * spacing) / 2;
-    final startY = (containerHeight - (row * spacing)) / 2;
-    
-    return Offset(
-      startX + col * spacing - tableSize / 2,
-      startY + row * spacing - tableSize / 2,
-    );
-  }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// Responsive Helper Methods
+extension _ResponsiveHelpers on _FloorLayoutScreenState {
+  double _getResponsivePadding([double base = 16]) {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return base;
+      case DeviceType.tablet:
+        return base * 1.25;
+      case DeviceType.desktop:
+        return base * 1.5;
+    }
+  }
+
+  double _getResponsiveMargin([double base = 16]) {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return base;
+      case DeviceType.tablet:
+        return base * 1.5;
+      case DeviceType.desktop:
+        return base * 2;
+    }
+  }
+
+  double _getResponsiveSpacing(double base) {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return base;
+      case DeviceType.tablet:
+        return base * 1.2;
+      case DeviceType.desktop:
+        return base * 1.4;
+    }
+  }
+
+  double _getResponsiveFontSize(double base) {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return base;
+      case DeviceType.tablet:
+        return base * 1.1;
+      case DeviceType.desktop:
+        return base * 1.2;
+    }
+  }
+
+  double _getResponsiveIconSize(double base) {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return base;
+      case DeviceType.tablet:
+        return base * 1.1;
+      case DeviceType.desktop:
+        return base * 1.2;
+    }
+  }
+
+  double _getResponsiveButtonPadding() {
+    switch (_deviceType) {
+      case DeviceType.mobile:
+        return 15;
+      case DeviceType.tablet:
+        return 18;
+      case DeviceType.desktop:
+        return 20;
+    }
+  }
 }

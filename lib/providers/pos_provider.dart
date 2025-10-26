@@ -168,13 +168,18 @@ class POSProvider extends ChangeNotifier {
   void unjoinTables(int tableId1, int tableId2) {
     final table1Index = _tables.indexWhere((t) => t.id == tableId1);
     final table2Index = _tables.indexWhere((t) => t.id == tableId2);
-    
+
     if (table1Index != -1 && table2Index != -1) {
+      final updatedTable1JoinedTables = _tables[table1Index].joinedTables.where((id) => id != tableId2).toList();
+      final updatedTable2JoinedTables = _tables[table2Index].joinedTables.where((id) => id != tableId1).toList();
+
       _tables[table1Index] = _tables[table1Index].copyWith(
-        joinedTables: _tables[table1Index].joinedTables.where((id) => id != tableId2).toList(),
+        isJoined: updatedTable1JoinedTables.isNotEmpty,
+        joinedTables: updatedTable1JoinedTables,
       );
       _tables[table2Index] = _tables[table2Index].copyWith(
-        joinedTables: _tables[table2Index].joinedTables.where((id) => id != tableId1).toList(),
+        isJoined: updatedTable2JoinedTables.isNotEmpty,
+        joinedTables: updatedTable2JoinedTables,
       );
       notifyListeners();
     }
@@ -182,26 +187,19 @@ class POSProvider extends ChangeNotifier {
 
   // Order Management Methods
   void addOrderToCustomer(int customerId, MenuItem menuItem) {
-    print('Provider: Adding order to customer $customerId, item: ${menuItem.name}');
-    
     if (_selectedTable == null) {
-      print('Provider: No selected table');
       return;
     }
-    
+
     final tableIndex = _tables.indexWhere((t) => t.id == _selectedTable!.id);
     if (tableIndex == -1) {
-      print('Provider: Table not found');
       return;
     }
-    
+
     final customerIndex = _tables[tableIndex].customers.indexWhere((c) => c.id == customerId);
     if (customerIndex == -1) {
-      print('Provider: Customer not found');
       return;
     }
-    
-    print('Provider: Found table at index $tableIndex, customer at index $customerIndex');
     
     final orderItem = OrderItem(
       id: menuItem.id,
@@ -218,13 +216,11 @@ class POSProvider extends ChangeNotifier {
     );
     
     _tables[tableIndex] = _tables[tableIndex].copyWith(customers: updatedCustomers);
-    
+
     // CRITICAL: Update the selected table reference to point to the updated table
     _selectedTable = _tables[tableIndex];
-    
+
     _updateStatusCounters();
-    print('Provider: Order added successfully, notifying listeners');
-    print('Provider: Updated selected table has ${_selectedTable!.customers[customerIndex].orders.length} orders for customer $customerId');
     notifyListeners();
   }
 
@@ -299,13 +295,11 @@ class POSProvider extends ChangeNotifier {
   // Bill Management Methods
   List<OrderItem> getBillItems() {
     if (_selectedTable == null) return [];
-    
+
     final billItems = <OrderItem>[];
     for (final customer in _selectedTable!.customers) {
-      print('Customer ${customer.name} has ${customer.orders.length} orders');
       billItems.addAll(customer.orders);
     }
-    print('Total bill items: ${billItems.length}');
     return billItems;
   }
 

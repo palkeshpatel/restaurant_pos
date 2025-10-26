@@ -222,7 +222,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.3),
+                color: Colors.orange.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
@@ -276,7 +276,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.3),
+                color: Colors.orange.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Text(
@@ -341,10 +341,10 @@ class _KitchenScreenState extends State<KitchenScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           decoration: BoxDecoration(
-            color: isSelected ? color.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+            color: isSelected ? color.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: isSelected ? color : Colors.white.withOpacity(0.3),
+              color: isSelected ? color : Colors.white.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -380,9 +380,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
   }
 
   Widget _buildSelectedStatusContent(POSProvider posProvider) {
-    if (_selectedMobileStatus == null) {
-      _selectedMobileStatus = ItemStatus.fire;
-    }
+    _selectedMobileStatus ??= ItemStatus.fire;
     
     return _buildStatusColumn(
       _getStatusDisplayName(_selectedMobileStatus!),
@@ -434,9 +432,9 @@ class _KitchenScreenState extends State<KitchenScreen> {
     return Container(
       margin: _isMobile ? const EdgeInsets.all(4) : const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -445,7 +443,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -470,7 +468,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
                 Text(
                   '${items.length} items',
                   style: TextStyle(
-                    color: color.withOpacity(0.8),
+                    color: color.withValues(alpha: 0.8),
                     fontSize: 12,
                   ),
                 ),
@@ -495,7 +493,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
                 return Container(
                   decoration: BoxDecoration(
                     color: isHovering 
-                        ? color.withOpacity(0.1)
+                        ? color.withValues(alpha: 0.1)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     border: isHovering 
@@ -509,14 +507,14 @@ class _KitchenScreenState extends State<KitchenScreen> {
                             children: [
                               Icon(
                                 isHovering ? Icons.download_done : Icons.inbox_outlined,
-                                color: isHovering ? color : Colors.white.withOpacity(0.3),
+                                color: isHovering ? color : Colors.white.withValues(alpha: 0.3),
                                 size: 48,
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 isHovering ? 'Drop here!' : 'No items',
                                 style: TextStyle(
-                                  color: isHovering ? color : Colors.white.withOpacity(0.5),
+                                  color: isHovering ? color : Colors.white.withValues(alpha: 0.5),
                                   fontSize: 14,
                                 ),
                               ),
@@ -555,11 +553,11 @@ class _KitchenScreenState extends State<KitchenScreen> {
           width: 200,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.9),
+            color: Colors.blue.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -590,10 +588,10 @@ class _KitchenScreenState extends State<KitchenScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
@@ -621,7 +619,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(orderItem.status).withOpacity(0.3),
+                        color: _getStatusColor(orderItem.status).withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -643,14 +641,14 @@ class _KitchenScreenState extends State<KitchenScreen> {
                   children: [
                     Icon(
                       Icons.access_time,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       size: 16,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       timeElapsed,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -671,7 +669,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: _getProgressValue(orderItem.status, timeElapsed),
-                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     _getStatusColor(orderItem.status),
                   ),
@@ -683,14 +681,14 @@ class _KitchenScreenState extends State<KitchenScreen> {
                   children: [
                     Icon(
                       Icons.priority_high,
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       size: 12,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'Priority: ${index + 1}',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 10,
                       ),
                     ),
@@ -701,10 +699,10 @@ class _KitchenScreenState extends State<KitchenScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -719,7 +717,7 @@ class _KitchenScreenState extends State<KitchenScreen> {
                             ),
                             icon: Icon(
                               Icons.arrow_drop_down,
-                              color: Colors.white.withOpacity(0.7),
+                              color: Colors.white.withValues(alpha: 0.7),
                               size: 16,
                             ),
                             items: ItemStatus.values.map((status) {

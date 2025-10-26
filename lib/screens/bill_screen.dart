@@ -126,7 +126,7 @@ class _BillScreenState extends State<BillScreen> {
               Container(
                 padding: EdgeInsets.all(_isMobile ? 16 : 20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   border: const Border(
                     top: BorderSide(color: Colors.white, width: 0.1),
                   ),
@@ -212,11 +212,11 @@ class _BillScreenState extends State<BillScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isRemoved 
-            ? Colors.red.withOpacity(0.1) 
-            : Colors.white.withOpacity(0.05),
+            ? Colors.red.withValues(alpha: 0.1) 
+            : Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isRemoved ? Colors.red.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+          color: isRemoved ? Colors.red.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -227,7 +227,7 @@ class _BillScreenState extends State<BillScreen> {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -261,7 +261,7 @@ class _BillScreenState extends State<BillScreen> {
                   item.description,
                   style: TextStyle(
                     fontSize: 14,
-                    color: isRemoved ? Colors.red.withOpacity(0.7) : Colors.white70,
+                    color: isRemoved ? Colors.red.withValues(alpha: 0.7) : Colors.white70,
                     decoration: isRemoved ? TextDecoration.lineThrough : null,
                     decorationColor: Colors.red,
                   ),
@@ -273,7 +273,7 @@ class _BillScreenState extends State<BillScreen> {
                       'Qty: ${item.quantity}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isRemoved ? Colors.red.withOpacity(0.7) : Colors.white70,
+                        color: isRemoved ? Colors.red.withValues(alpha: 0.7) : Colors.white70,
                       ),
                     ),
                     const Spacer(),
@@ -300,7 +300,7 @@ class _BillScreenState extends State<BillScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: isRemoved ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+              color: isRemoved ? Colors.green.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isRemoved ? Colors.green : Colors.red,
@@ -326,7 +326,7 @@ class _BillScreenState extends State<BillScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
-        color: isTotal ? Colors.green.withOpacity(0.2) : Colors.transparent,
+        color: isTotal ? Colors.green.withValues(alpha: 0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: isTotal ? Border.all(color: Colors.green, width: 1) : null,
       ),

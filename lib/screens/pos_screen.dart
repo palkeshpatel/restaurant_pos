@@ -81,8 +81,6 @@ class _POSScreenState extends State<POSScreen> {
         child: SafeArea(
           child: Consumer<POSProvider>(
             builder: (context, posProvider, child) {
-              print('POS Screen rebuilding with table: ${posProvider.selectedTable?.name}');
-              print('Total bill items: ${posProvider.getBillItems().length}');
               if (posProvider.selectedTable == null) {
                 return const Center(
                   child: Text(
@@ -129,8 +127,6 @@ class _POSScreenState extends State<POSScreen> {
   Widget _buildDesktopLayout(POSProvider posProvider) {
     return Consumer<SettingsProvider>(
       builder: (context, settingsProvider, child) {
-        final layout = settingsProvider.menuLayout;
-        
         return Row(
           children: [
             // Left Panel - Table & Customers
@@ -249,30 +245,6 @@ class _POSScreenState extends State<POSScreen> {
     );
   }
 
-  Widget _buildStatusChip(String emoji, int count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 12)),
-          const SizedBox(width: 2),
-          Text(
-            count.toString(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _toggleLeftPanel() {
     // Only allow toggling on mobile devices
@@ -311,7 +283,7 @@ class _POSScreenState extends State<POSScreen> {
   Widget _buildTablePanel(POSProvider posProvider) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         border: const Border(
           right: BorderSide(color: Colors.white, width: 0.1),
         ),
@@ -340,7 +312,7 @@ class _POSScreenState extends State<POSScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.3),
+                    color: Colors.green.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -360,9 +332,8 @@ class _POSScreenState extends State<POSScreen> {
                 children: [
                   // Show all customers
                   ...posProvider.selectedTable!.customers.map((customer) {
-                    print('Customer ${customer.name} has ${customer.orders.length} orders in UI');
                     return _buildCustomerCard(customer, posProvider);
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -391,7 +362,7 @@ class _POSScreenState extends State<POSScreen> {
                       child: ElevatedButton(
                         onPressed: () => posProvider.clearAllOrders(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.withOpacity(0.3),
+                          backgroundColor: Colors.red.withValues(alpha: 0.3),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         child: const Text('Clear All'),
@@ -431,9 +402,9 @@ class _POSScreenState extends State<POSScreen> {
       margin: const EdgeInsets.only(bottom: 15),
       height: 120, // Fixed height for customer cards
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,7 +413,7 @@ class _POSScreenState extends State<POSScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFbb86fc).withOpacity(0.2),
+              color: const Color(0xFFbb86fc).withValues(alpha: 0.2),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(10),
                 topRight: Radius.circular(10),
@@ -462,7 +433,7 @@ class _POSScreenState extends State<POSScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.3),
+                    color: Colors.green.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -483,26 +454,21 @@ class _POSScreenState extends State<POSScreen> {
             child: DragTarget<MenuItem>(
               key: ValueKey('drag_target_${customer.id}'),
               onWillAcceptWithDetails: (details) {
-                print('Will accept item: ${details.data.name} on ${customer.name}');
                 return true;
               },
               onAcceptWithDetails: (details) {
-                print('Item dropped on ${customer.name}: ${details.data.name}');
-                print('Customer ID: ${customer.id}');
-                print('Table ID: ${posProvider.selectedTable?.id}');
                 _addItemToCustomer(details.data, customer.id, posProvider);
               },
               onLeave: (data) {
-                print('Item left ${customer.name}');
+                // Item left the drop target
               },
               builder: (context, candidateData, rejectedData) {
                 final isHovering = candidateData.isNotEmpty;
-                print('Building customer ${customer.name} with ${customer.orders.length} orders');
                 return Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: isHovering 
-                        ? Colors.blue.withOpacity(0.3)
+                        ? Colors.blue.withValues(alpha: 0.3)
                         : Colors.transparent,
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(10),
@@ -510,7 +476,7 @@ class _POSScreenState extends State<POSScreen> {
                     ),
                     border: isHovering 
                         ? Border.all(color: Colors.blue, width: 3)
-                        : Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                        : Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
                   ),
                   child: customer.orders.isEmpty
                       ? Center(
@@ -554,11 +520,11 @@ class _POSScreenState extends State<POSScreen> {
 
   Widget _buildOrderItem(OrderItem order, int customerId, POSProvider posProvider) {
     return Container(
-      key: ValueKey('order_item_${order.id}_${customerId}'),
+      key: ValueKey('order_item_${order.id}_$customerId'),
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
@@ -584,7 +550,7 @@ class _POSScreenState extends State<POSScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _getStatusColor(order.status).withOpacity(0.3),
+                        color: _getStatusColor(order.status).withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -609,7 +575,7 @@ class _POSScreenState extends State<POSScreen> {
             ),
           ),
           IconButton(
-            key: ValueKey('remove_${order.id}_${customerId}'),
+            key: ValueKey('remove_${order.id}_$customerId'),
             onPressed: () => posProvider.removeOrderFromCustomer(customerId, order.id),
             icon: const Icon(Icons.close, color: Colors.red, size: 16),
           ),
@@ -648,7 +614,7 @@ class _POSScreenState extends State<POSScreen> {
   Widget _buildMenuPanel(POSProvider posProvider) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2),
+        color: Colors.black.withValues(alpha: 0.2),
         border: _isMobile ? null : const Border(
           right: BorderSide(color: Colors.white, width: 0.1),
         ),
@@ -671,9 +637,9 @@ class _POSScreenState extends State<POSScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<MenuCategory>(
@@ -723,7 +689,7 @@ class _POSScreenState extends State<POSScreen> {
                       width: _isMobile ? 150 : 200,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: TextField(
@@ -776,11 +742,11 @@ class _POSScreenState extends State<POSScreen> {
           width: 250,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.9),
+            color: Colors.blue.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withValues(alpha: 0.4),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
@@ -793,7 +759,7 @@ class _POSScreenState extends State<POSScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -817,9 +783,9 @@ class _POSScreenState extends State<POSScreen> {
         key: ValueKey('menu_item_${item.id}'),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -829,7 +795,7 @@ class _POSScreenState extends State<POSScreen> {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -897,9 +863,9 @@ class _POSScreenState extends State<POSScreen> {
         key: ValueKey('menu_item_${item.id}'),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: Material(
           color: Colors.transparent,
@@ -915,7 +881,7 @@ class _POSScreenState extends State<POSScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
@@ -969,12 +935,10 @@ class _POSScreenState extends State<POSScreen> {
                       ElevatedButton(
                         key: ValueKey('add_button_${item.id}'),
                         onPressed: () {
-                          print('Add button pressed for item: ${item.name}');
                           try {
                             _showCustomerSelectionDialog(item, posProvider);
-                          } catch (e, stackTrace) {
-                            print('Error showing customer dialog: $e');
-                            print('Stack trace: $stackTrace');
+                          } catch (e) {
+                            // Handle error silently or show user-friendly message
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -1001,7 +965,7 @@ class _POSScreenState extends State<POSScreen> {
   Widget _buildCategoryPanel(POSProvider posProvider) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.25),
+        color: Colors.black.withValues(alpha:0.25),
         border: _isMobile ? null : const Border(
           left: BorderSide(color: Colors.white, width: 0.1),
         ),
@@ -1071,7 +1035,7 @@ class _POSScreenState extends State<POSScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(status).withOpacity(0.2),
+                      color: _getStatusColor(status).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
@@ -1101,7 +1065,7 @@ class _POSScreenState extends State<POSScreen> {
                       ],
                     ),
                   );
-                }).toList(),
+                }),
               ],
             ),
           ),
@@ -1132,9 +1096,9 @@ class _POSScreenState extends State<POSScreen> {
   Widget _buildMobileMenuItemCard(MenuItem item, POSProvider posProvider) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Material(
         color: Colors.transparent,
@@ -1152,7 +1116,7 @@ class _POSScreenState extends State<POSScreen> {
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
@@ -1234,9 +1198,9 @@ class _POSScreenState extends State<POSScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -1321,32 +1285,29 @@ class _POSScreenState extends State<POSScreen> {
       margin: isMobile ? null : const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
         onTap: () {
-          print('Category tapped: ${category.displayName}');
           try {
             setState(() {
               _selectedCategory = category;
               _searchQuery = '';
             });
-            print('Category changed to: ${category.displayName}');
-            
+
             // On mobile, switch to menu panel after selecting category
             if (_isMobile) {
               _showMenuPanel();
             }
-          } catch (e, stackTrace) {
-            print('Error changing category: $e');
-            print('Stack trace: $stackTrace');
+          } catch (e) {
+            // Handle error silently or show user-friendly message
           }
         },
         child: Container(
             padding: EdgeInsets.all(isMobile ? 16 : 12),
             decoration: BoxDecoration(
               color: isSelected 
-                  ? const Color(0xFF2196f3).withOpacity(0.3)
-                  : Colors.white.withOpacity(0.08),
+                  ? const Color(0xFF2196f3).withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: isSelected ? const Color(0xFF2196f3) : Colors.white.withOpacity(0.1),
+                color: isSelected ? const Color(0xFF2196f3) : Colors.white.withValues(alpha: 0.1),
               ),
             ),
             child: Column(
@@ -1358,8 +1319,8 @@ class _POSScreenState extends State<POSScreen> {
                   height: isMobile ? 50 : 40,
                   decoration: BoxDecoration(
                     color: isSelected 
-                        ? Colors.white.withOpacity(0.2)
-                        : Colors.white.withOpacity(0.1),
+                        ? Colors.white.withValues(alpha: 0.2)
+                        : Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(isMobile ? 25 : 20),
                     border: Border.all(
                       color: isSelected ? Colors.white : Colors.transparent,
@@ -1404,16 +1365,14 @@ class _POSScreenState extends State<POSScreen> {
 
   List<MenuItem> _getFilteredItems(POSProvider posProvider) {
     var items = posProvider.menuItems
-        .where((item) => item.category == _selectedCategory)
-        .toList();
-    
+        .where((item) => item.category == _selectedCategory);
+
     if (_searchQuery.isNotEmpty) {
       items = items
-          .where((item) => item.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
+          .where((item) => item.name.toLowerCase().contains(_searchQuery.toLowerCase()));
     }
-    
-    return items;
+
+    return items.toList();
   }
 
   Color _getStatusColor(ItemStatus status) {
@@ -1450,12 +1409,7 @@ class _POSScreenState extends State<POSScreen> {
 
   void _addItemToCustomer(MenuItem item, int customerId, POSProvider posProvider) {
     try {
-      print('Adding item: ${item.name} to customer: $customerId');
-      print('Selected table: ${posProvider.selectedTable?.name}');
-      print('Selected table ID: ${posProvider.selectedTable?.id}');
-      
       if (posProvider.selectedTable == null) {
-        print('ERROR: No table selected!');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('ERROR: No table selected! Please select a table first.'),
@@ -1464,9 +1418,8 @@ class _POSScreenState extends State<POSScreen> {
         );
         return;
       }
-      
+
       posProvider.addOrderToCustomer(customerId, item);
-      print('Item added successfully');
       
       final customerName = posProvider.selectedTable!.customers.firstWhere((c) => c.id == customerId).name;
       final totalItems = posProvider.getBillItems().length;
@@ -1487,9 +1440,8 @@ class _POSScreenState extends State<POSScreen> {
           duration: const Duration(seconds: 3),
         ),
       );
-    } catch (e, stackTrace) {
-      print('Error adding item: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
+      // Handle error silently or show user-friendly message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error adding item: $e'),
@@ -1500,26 +1452,6 @@ class _POSScreenState extends State<POSScreen> {
     }
   }
 
-  void _sendToKitchen(POSProvider posProvider) {
-    final totalItems = posProvider.getBillItems().length;
-    
-    if (totalItems == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No items to send to kitchen'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    
-    // Directly navigate to kitchen management without confirmation
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const KitchenScreen(),
-      ),
-    );
-  }
 
   void _mergeTable() {
     // Navigate back to floor layout to select another table
