@@ -1,66 +1,98 @@
-# Flutter Demo App
+# Restaurant POS System
 
-A new Flutter project with a simple counter app.
+A professional Point of Sale system designed for restaurants with multi-user support and role-based access control.
+
+## Features
+
+- **Multi-User Authentication**: Support for managers, waiters, and owners
+- **Role-Based Access**: Different permissions based on user roles
+- **PIN Security**: 4-digit PIN authentication for enhanced security
+- **Professional UI**: Modern, restaurant-themed interface
+- **Menu Management**: Categorized menu items with easy ordering
+- **Order Cart**: Real-time cart management with pricing
+- **Responsive Design**: Works across different screen sizes
+
+## Screens
+
+1. **Splash Screen**: Professional loading screen with restaurant branding
+2. **Restaurant Login**: Enter restaurant code to access the system
+3. **User Selection**: Choose from available staff members with role indicators
+4. **PIN Authentication**: Secure 4-digit PIN entry
+5. **POS System**: Full-featured point of sale interface with menu and cart
+
+## User Roles
+
+- **Manager (MGR)**: Full system access and management capabilities
+- **Owner (OWN)**: Complete restaurant management and oversight
+- **Waiter (WTR)**: Order taking and customer service functions
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
-## Quick Start
-
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd flutter_app
-   ```
-
-2. **Install dependencies**
+1. **Install Dependencies**
 
    ```bash
    flutter pub get
    ```
 
-3. **Run the app**
-
+2. **Run the app**
    ```bash
    flutter run
    ```
 
-## Features
+## How to Use
 
-- Simple counter application
-- Material Design UI
-- Hot reload support for rapid development
+1. **Splash Screen**: App loads with restaurant branding (3 seconds)
+2. **Restaurant Login**: Enter any 6-digit restaurant code
+3. **User Selection**: Choose from 5 available staff members:
+   - John Smith (Manager)
+   - Sarah Johnson (Waiter)
+   - Mike Wilson (Waiter)
+   - Emily Davis (Waiter)
+   - David Brown (Owner)
+4. **PIN Authentication**: Enter PIN "1234" to login
+5. **POS System**: Full restaurant interface with:
+   - Category sidebar (Pizza, Burgers, Drinks, Desserts)
+   - Menu items grid with prices
+   - Shopping cart with quantity controls
+   - Checkout functionality
+
+## Dependencies
+
+- `flutter`: Flutter SDK
+- `cupertino_icons`: iOS style icons
 
 ## Project Structure
 
 ```
 lib/
-└── main.dart                 # Main application entry point
+├── main.dart                 # Main application with all screens
+assets/
+├── images/                   # Restaurant images and logos
+└── icons/                    # App icons and UI elements
 ```
 
-## Dependencies
+## Security Features
 
-- `flutter` - Flutter SDK
-- `cupertino_icons` - iOS style icons
+- Restaurant code verification
+- User role validation
+- 4-digit PIN authentication
+- Session management
+- Secure logout functionality
 
-## Running Tests
+## Customization
 
-To run the widget tests:
+The system is designed to be easily customizable:
 
-```bash
-flutter test
-```
+- **Colors**: Update the primary color scheme in `main.dart`
+- **Menu Items**: Add your restaurant's actual menu items
+- **User Management**: Integrate with your staff database
+- **Branding**: Add your restaurant logo and branding
+
+## Development
+
+- **Hot Reload**: Make changes and see them instantly
+- **Multi-Platform**: Works on Android, iOS, Web, Windows, macOS, Linux
+- **Material Design**: Follows Google's Material Design guidelines
 
 ## License
 
