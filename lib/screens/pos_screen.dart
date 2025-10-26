@@ -4,6 +4,7 @@ import '../providers/pos_provider.dart';
 import '../models/table_model.dart';
 import '../models/menu_item.dart';
 import 'kitchen_screen.dart';
+import 'floor_layout_screen.dart';
 
 class POSScreen extends StatefulWidget {
   const POSScreen({super.key});
@@ -180,12 +181,6 @@ class _POSScreenState extends State<POSScreen> {
                   isActive: _showRightPanel,
                   onTap: () => _toggleRightPanel(),
                 ),
-                _buildMobileNavButton(
-                  icon: Icons.room_service,
-                  label: 'Kitchen',
-                  isActive: false,
-                  onTap: () => _navigateToKitchen(),
-                ),
               ],
             ),
           ),
@@ -359,7 +354,7 @@ class _POSScreenState extends State<POSScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => _mergeTable(),
+                        onPressed: () => _navigateToKitchen(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF4fc3f7),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -367,11 +362,31 @@ class _POSScreenState extends State<POSScreen> {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.table_restaurant, size: 18),
+                            Icon(Icons.room_service, size: 18),
                             SizedBox(width: 8),
-                            Text('Merge Table'),
+                            Text('Kitchen'),
                           ],
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () => _mergeTable(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.withValues(alpha: 0.3),
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.arrow_back, size: 18),
+                          SizedBox(width: 4),
+                          Text('Merge', style: TextStyle(fontSize: 12)),
+                        ],
                       ),
                     ),
                   ],
@@ -1442,8 +1457,12 @@ class _POSScreenState extends State<POSScreen> {
 
 
   void _mergeTable() {
-    // Navigate back to floor layout to select another table
-    Navigator.of(context).pop();
+    // Navigate to floor layout to select tables for merging
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const FloorLayoutScreen(),
+      ),
+    );
   }
 
   void _navigateToKitchen() {
