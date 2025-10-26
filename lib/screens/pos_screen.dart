@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
-import '../providers/settings_provider.dart';
 import '../models/table_model.dart';
 import '../models/menu_item.dart';
 import 'kitchen_screen.dart';
-import 'settings_screen.dart';
 
 class POSScreen extends StatefulWidget {
   const POSScreen({super.key});
@@ -125,31 +123,27 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   Widget _buildDesktopLayout(POSProvider posProvider) {
-    return Consumer<SettingsProvider>(
-      builder: (context, settingsProvider, child) {
-        return Row(
-          children: [
-            // Left Panel - Table & Customers
-            if (_showLeftPanel)
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.35,
-                child: _buildTablePanel(posProvider),
-              ),
-                  
-            // Middle Panel - Menu Items
-            Expanded(
-              child: _buildMenuPanel(posProvider),
-            ),
-                  
-            // Right Panel - Categories & Status
-            if (_showRightPanel)
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.15,
-                child: _buildCategoryPanel(posProvider),
-              ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        // Left Panel - Table & Customers
+        if (_showLeftPanel)
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.35,
+            child: _buildTablePanel(posProvider),
+          ),
+
+        // Middle Panel - Menu Items
+        Expanded(
+          child: _buildMenuPanel(posProvider),
+        ),
+
+        // Right Panel - Categories & Status
+        if (_showRightPanel)
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.15,
+            child: _buildCategoryPanel(posProvider),
+          ),
+      ],
     );
   }
 
@@ -191,12 +185,6 @@ class _POSScreenState extends State<POSScreen> {
                   label: 'Kitchen',
                   isActive: false,
                   onTap: () => _navigateToKitchen(),
-                ),
-                _buildMobileNavButton(
-                  icon: Icons.settings,
-                  label: 'Setting',
-                  isActive: false,
-                  onTap: () => _showSettings(),
                 ),
               ],
             ),
@@ -1466,11 +1454,4 @@ class _POSScreenState extends State<POSScreen> {
     );
   }
 
-  void _showSettings() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const SettingsScreen(),
-      ),
-    );
-  }
 }

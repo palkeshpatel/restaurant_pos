@@ -4,7 +4,6 @@ import '../providers/pos_provider.dart';
 import '../models/table_model.dart';
 import 'bill_screen.dart';
 import 'pos_screen.dart';
-import 'settings_screen.dart';
 import 'dart:async';
 
 class KitchenScreen extends StatefulWidget {
@@ -142,16 +141,6 @@ class _KitchenScreenState extends State<KitchenScreen> {
               label: 'Kitchen',
               isActive: true,
               onTap: () {},
-            ),
-          ),
-          Expanded(
-            child: _buildNavButton(
-              icon: Icons.settings,
-              label: 'Setting',
-              isActive: false,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              ),
             ),
           ),
         ],
