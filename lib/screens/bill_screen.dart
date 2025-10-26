@@ -59,6 +59,22 @@ class _BillScreenState extends State<BillScreen> {
           Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.red.withOpacity(0.5),
+              ),
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close),
+              tooltip: 'Close',
+              color: Colors.red,
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
               color: SettingsProvider.restaurantGreen.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
@@ -222,63 +238,6 @@ class _BillScreenState extends State<BillScreen> {
                     const SizedBox(height: 16),
                     _buildSummaryRow('Total', total, isTotal: true),
                     const SizedBox(height: 20),
-                    _isMobile 
-                        ? Column(
-                            children: [
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _printBill(subtotal, tax, total),
-                                  icon: const Icon(Icons.print),
-                                  label: const Text('Print Bill'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    padding: const EdgeInsets.all(16),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(Icons.close),
-                                  label: const Text('Close'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                    padding: const EdgeInsets.all(16),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(Icons.close),
-                                  label: const Text('Close'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                    padding: const EdgeInsets.all(16),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _printBill(subtotal, tax, total),
-                                  icon: const Icon(Icons.print),
-                                  label: const Text('Print Bill'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    padding: const EdgeInsets.all(16),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                   ],
                 ),
               ),
