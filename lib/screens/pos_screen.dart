@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
+import '../providers/settings_provider.dart';
 import '../models/table_model.dart';
 import '../models/menu_item.dart';
+import '../widgets/background_painter.dart';
 import 'kitchen_screen.dart';
 import 'floor_layout_screen.dart';
 
@@ -60,38 +62,77 @@ class _POSScreenState extends State<POSScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
     // Ensure we have the correct screen size detection
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkScreenSize();
     });
-    
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1a2a3a),
-              Color(0xFF0d1b2a),
-            ],
-          ),
+        decoration: BoxDecoration(
+          gradient: SettingsProvider.darkGradient,
         ),
-        child: SafeArea(
-          child: Consumer<POSProvider>(
-            builder: (context, posProvider, child) {
-              if (posProvider.selectedTable == null) {
-                return const Center(
-                  child: Text(
-                    'No table selected',
-                    style: TextStyle(color: Colors.white, fontSize: 24),
+        child: Stack(
+          children: [
+            // Background pattern
+            if (settingsProvider.showBackgroundImages)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: RestaurantBackgroundPainter(
+                    opacity: 0.04,
                   ),
-                );
-              }
+                ),
+              ),
 
-              return _buildResponsiveLayout(posProvider);
-            },
-          ),
+            SafeArea(
+              child: Consumer<POSProvider>(
+                builder: (context, posProvider, child) {
+                  if (posProvider.selectedTable == null) {
+                    return Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: SettingsProvider.restaurantRed.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: SettingsProvider.restaurantRed,
+                              size: 48,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No table selected',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Please select a table from the floor layout',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return _buildResponsiveLayout(posProvider);
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
+import '../providers/settings_provider.dart';
 import '../models/table_model.dart';
+import '../widgets/background_painter.dart';
 import 'bill_screen.dart';
 import 'pos_screen.dart';
 import 'dart:async';
@@ -51,44 +53,53 @@ class _KitchenScreenState extends State<KitchenScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1a2a3a),
-              Color(0xFF0d1b2a),
-            ],
-          ),
+        decoration: BoxDecoration(
+          gradient: SettingsProvider.darkGradient,
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Mobile Top Navigation Bar
-              if (_isMobile) _buildMobileTopNav(),
-              
-              // Header
-              Container(
-                padding: const EdgeInsets.all(20),
-                child: _isMobile 
-                    ? _buildMobileHeader()
-                    : _buildDesktopHeader(),
-              ),
-              
-              // Status Columns
-              Expanded(
-                child: Consumer<POSProvider>(
-                  builder: (context, posProvider, child) {
-                    return _isMobile 
-                        ? _buildMobileLayout(posProvider)
-                        : _buildDesktopLayout(posProvider);
-                  },
+        child: Stack(
+          children: [
+            // Background pattern
+            if (settingsProvider.showBackgroundImages)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: KitchenBackgroundPainter(
+                    opacity: 0.05,
+                  ),
                 ),
               ),
-            ],
-          ),
+
+            SafeArea(
+              child: Column(
+                children: [
+                  // Mobile Top Navigation Bar
+                  if (_isMobile) _buildMobileTopNav(),
+
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: _isMobile
+                        ? _buildMobileHeader()
+                        : _buildDesktopHeader(),
+                  ),
+
+                  // Status Columns
+                  Expanded(
+                    child: Consumer<POSProvider>(
+                      builder: (context, posProvider, child) {
+                        return _isMobile
+                            ? _buildMobileLayout(posProvider)
+                            : _buildDesktopLayout(posProvider);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/pos_provider.dart';
+import '../providers/settings_provider.dart';
 import '../models/table_model.dart';
+import '../widgets/background_painter.dart';
 import 'pos_screen.dart';
 
 enum DeviceType {
@@ -50,60 +52,90 @@ class _FloorLayoutScreenState extends State<FloorLayoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
+
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1a2a3a),
-              Color(0xFF0d1b2a),
-            ],
-          ),
+        decoration: BoxDecoration(
+          gradient: SettingsProvider.darkGradient,
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: EdgeInsets.all(_getResponsivePadding()),
-                child: _buildResponsiveHeader(),
-              ),
-
-              // Instructions
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: _getResponsiveMargin()),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue),
-                ),
-                child: Text(
-                  'Tap a table to select it, tap another table to join them, then tap "Enter Table" to start taking orders',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: _getResponsiveFontSize(14),
+        child: Stack(
+          children: [
+            // Background pattern
+            if (settingsProvider.showBackgroundImages)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: TableBackgroundPainter(
+                    opacity: 0.06,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
 
-              SizedBox(height: _getResponsiveSpacing(20)),
+            SafeArea(
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: EdgeInsets.all(_getResponsivePadding()),
+                    child: _buildResponsiveHeader(),
+                  ),
 
-              // Floor Layout
-              Expanded(
-                child: _buildResponsiveTableGrid(),
-              ),
+                  // Instructions
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: _getResponsiveMargin()),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: SettingsProvider.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: SettingsProvider.primaryColor.withOpacity(0.3),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: SettingsProvider.primaryColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Tap a table to select it, tap another table to join them, then tap "Enter Table" to start taking orders',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white,
+                              fontSize: _getResponsiveFontSize(14),
+                            ),
+                            textAlign: TextAlign.start,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-              // Action Buttons
-              Container(
-                padding: EdgeInsets.all(_getResponsivePadding()),
-                child: _buildResponsiveActionButtons(),
+                  SizedBox(height: _getResponsiveSpacing(20)),
+
+                  // Floor Layout
+                  Expanded(
+                    child: _buildResponsiveTableGrid(),
+                  ),
+
+                  // Action Buttons
+                  Container(
+                    padding: EdgeInsets.all(_getResponsivePadding()),
+                    child: _buildResponsiveActionButtons(),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

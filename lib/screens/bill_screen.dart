@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:provider/provider.dart';
 import '../models/table_model.dart';
+import '../providers/settings_provider.dart';
 
 class BillScreen extends StatefulWidget {
   final List<OrderItem> items;
@@ -36,94 +38,175 @@ class _BillScreenState extends State<BillScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = Provider.of<SettingsProvider>(context);
     final subtotal = _calculateSubtotal();
     final tax = subtotal * 0.1;
     final total = subtotal + tax;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Restaurant Bill'),
-        backgroundColor: const Color(0xFF1a2a3a),
+        title: Text(
+          'Gourmet Restaurant Bill',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
-          IconButton(
-            onPressed: () => _printBill(subtotal, tax, total),
-            icon: const Icon(Icons.print),
-            tooltip: 'Print Bill',
+          Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: SettingsProvider.restaurantGreen.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: SettingsProvider.restaurantGreen.withOpacity(0.5),
+              ),
+            ),
+            child: IconButton(
+              onPressed: () => _printBill(subtotal, tax, total),
+              icon: const Icon(Icons.print),
+              tooltip: 'Print Bill',
+              color: SettingsProvider.restaurantGreen,
+            ),
           ),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1a2a3a),
-              Color(0xFF0d1b2a),
-            ],
-          ),
+        decoration: BoxDecoration(
+          gradient: SettingsProvider.darkGradient,
         ),
         child: SafeArea(
-          child: Column(
-            children: [
-              // Restaurant Header
-              Container(
-                padding: EdgeInsets.all(_isMobile ? 16 : 20),
-                child: Column(
-                  children: [
-                    Text(
-                      '🍽️ RESTAURANT BILL',
-                      style: TextStyle(
-                        fontSize: _isMobile ? 20 : 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 2,
+              child: Column(
+                children: [
+                  // Restaurant Header
+                  Container(
+                    padding: EdgeInsets.all(_isMobile ? 16 : 20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(20),
+                        bottomRight: Radius.circular(20),
+                      ),
+                      border: Border.all(
+                        color: SettingsProvider.primaryColor.withOpacity(0.2),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-                      style: TextStyle(
-                        fontSize: _isMobile ? 14 : 16,
-                        color: Colors.white70,
-                      ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    SettingsProvider.primaryColor,
+                                    SettingsProvider.primaryColor.withOpacity(0.7),
+                                  ],
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.restaurant,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Text(
+                              'GOURMET',
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 3,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Professional Restaurant Bill',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: SettingsProvider.primaryColor,
+                            fontWeight: FontWeight.w300,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: SettingsProvider.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: SettingsProvider.primaryColor.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: SettingsProvider.primaryColor,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Date: ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.white70,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Icon(
+                                Icons.access_time,
+                                color: SettingsProvider.primaryColor,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Time: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      'Time: ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-                      style: TextStyle(
-                        fontSize: _isMobile ? 14 : 16,
-                        color: Colors.white70,
-                      ),
+                  ),
+
+                  // Bill Items (scrollable)
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: _isMobile ? 16 : 20),
+                      itemCount: widget.items.length,
+                      itemBuilder: (context, index) {
+                        final item = widget.items[index];
+                        final isRemoved = _removedItems.contains(item.id);
+
+                        return _buildBillItem(item, isRemoved, () {
+                          setState(() {
+                            if (isRemoved) {
+                              _removedItems.remove(item.id);
+                            } else {
+                              _removedItems.add(item.id);
+                            }
+                          });
+                        });
+                      },
                     ),
-                  ],
-                ),
-              ),
-              
-              // Bill Items
-              Expanded(
-                child: ListView.builder(
-                  padding: EdgeInsets.symmetric(horizontal: _isMobile ? 16 : 20),
-                  itemCount: widget.items.length,
-                  itemBuilder: (context, index) {
-                    final item = widget.items[index];
-                    final isRemoved = _removedItems.contains(item.id);
-                    
-                    return _buildBillItem(item, isRemoved, () {
-                      setState(() {
-                        if (isRemoved) {
-                          _removedItems.remove(item.id);
-                        } else {
-                          _removedItems.add(item.id);
-                        }
-                      });
-                    });
-                  },
-                ),
-              ),
-              
-              // Bill Summary
-              Container(
+                  ),
+
+                  // Bill Summary (fixed at bottom)
+                  Container(
                 padding: EdgeInsets.all(_isMobile ? 16 : 20),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.1),

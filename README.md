@@ -1,41 +1,108 @@
-# Restaurant POS System
+# Gourmet Restaurant POS System
 
-A comprehensive Point of Sale (POS) system built with Flutter for restaurant management.
+A comprehensive, modern Point of Sale (POS) system built with Flutter featuring a beautiful dark theme, splash screen, and mobile app-style animations for professional restaurant management.
 
-## Features
+## ✨ Features
 
-- 🔐 **6-digit PIN Authentication** - Secure login system
-- 🍽️ **Restaurant Floor Layout** - Visual table management with cartoon-style design
-- 🔗 **Table Joining** - Connect tables for larger groups with canvas visualization
-- 📱 **Modern POS Interface** - Intuitive order management system
-- 🔥 **Fire/Hold Status System** - Smart item status tracking for kitchen workflow
-- 📊 **Real-time Status Counters** - Live tracking of item preparation status
-- 🧾 **Bill Management** - Complete billing system with PDF generation
-- 🖨️ **Print Functionality** - Generate and print professional bills
+### 🎨 **Modern Dark UI**
 
-## Quick Start
+- **Splash Screen** with restaurant branding and smooth animations
+- **Dark Theme** throughout the entire application with beautiful gradients
+- **Background Patterns** with restaurant-themed decorative elements
+- **Professional Typography** using Poppins font family
+- **Mobile App-style Animations** with fade, slide, and scale effects
 
-1. **Clone the repository**
+### 🔐 **Enhanced Authentication**
 
-   ```bash
-   git clone <repository-url>
-   cd restaurant_pos
-   ```
+- **6-digit PIN Authentication** with visual feedback and animations
+- **Animated Number Pad** with press effects and color transitions
+- **Error Handling** with styled error messages and icons
 
-2. **Install dependencies**
+### 🍽️ **Visual Floor Management**
+
+- **Interactive Table Layout** with responsive design for mobile and desktop
+- **Background Patterns** showing table and chair arrangements
+- **Smooth Animations** for table selection and joining
+- **Status Indicators** with color-coded table states
+
+### 📱 **Modern POS Interface**
+
+- **Responsive Layout** adapting to all screen sizes
+- **Drag & Drop** order management with visual feedback
+- **Animated Cards** with press effects and hover states
+- **Real-time Status Updates** with pulsing indicators
+
+### 🔥 **Smart Kitchen System**
+
+- **Kitchen-themed Backgrounds** with flame patterns
+- **Animated Status Columns** with drag-and-drop functionality
+- **Live Timers** with progress indicators
+- **Priority Management** with visual ordering
+
+### 🧾 **Professional Billing**
+
+- **Enhanced Bill Design** with restaurant branding
+- **Animated UI Elements** with smooth transitions
+- **PDF Generation** with professional formatting
+- **Print Functionality** with styled buttons
+
+## 🚀 Quick Start
+
+1. **Install dependencies**
 
    ```bash
    flutter pub get
    ```
 
-3. **Run the app**
+2. **Run the app**
 
    ```bash
-   flutter run
+   # For web (recommended)
+   flutter run -d chrome --web-port=8080
+
+   # For desktop
+   flutter run -d windows
+
+   # For mobile
+   flutter run -d android
    ```
 
-4. **Login with demo PIN**
+3. **✨ Features Available**
+
+   - **Splash Screen**: Beautiful animated intro with "GOURMET" branding
+   - **Dark Theme**: Professional dark UI throughout the entire app
+   - **Background Patterns**: Context-aware patterns for each screen
+   - **Mobile Animations**: Smooth transitions and interactive effects
+   - **Responsive Design**: Works on mobile, tablet, and desktop
+
+4. **🔐 Login**
    - Use PIN: `123456` to access the system
+   - Enhanced login screen with animated number pad and beautiful gradients
+
+## 🎯 What You'll See
+
+### 🌟 **Splash Screen**
+
+- **Animated Logo**: Rotating restaurant icon with scaling effects
+- **"GOURMET" Branding**: Professional typography with letter spacing
+- **Loading Animation**: Smooth progress indicator
+- **Background Pattern**: Geometric patterns with floating elements
+
+### 🌙 **Dark Theme Experience**
+
+- **Gradient Backgrounds**: Multi-layered dark gradients throughout
+- **Context Patterns**: Different background patterns for each screen:
+  - **Restaurant Screen**: Food and dining themed patterns 🍽️
+  - **Kitchen Screen**: Flame and cooking themed patterns 🔥
+  - **Table Layout**: Table and chair arrangement patterns 🪑
+  - **Bill Screen**: Professional document-style backgrounds 📄
+
+### 📱 **Mobile App Features**
+
+- **Button Animations**: Scale effects on press with color transitions
+- **Card Interactions**: Hover effects and smooth transitions
+- **Status Indicators**: Pulsing animations for live updates
+- **Responsive Design**: Seamless experience across all screen sizes
 
 ## Usage
 
@@ -83,26 +150,96 @@ A comprehensive Point of Sale (POS) system built with Flutter for restaurant man
 
 ```
 lib/
-├── main.dart                 # App entry point
-├── models/                   # Data models
-├── providers/                # State management
-└── screens/                  # UI screens
+├── main.dart                 # App entry point with enhanced theming
+├── models/                   # Data models (MenuItem, TableModel, etc.)
+├── providers/                # State management (POS & Settings providers)
+├── screens/                  # UI screens with enhanced animations
+│   ├── splash_screen.dart    # ✨ NEW: Animated splash screen
+│   ├── login_screen.dart     # Enhanced login with animations
+│   ├── floor_layout_screen.dart # Visual table layout with patterns
+│   ├── pos_screen.dart       # Modern POS interface
+│   ├── kitchen_screen.dart   # Kitchen management with backgrounds
+│   └── bill_screen.dart      # Professional billing system
+└── widgets/                  # ✨ NEW: Custom widgets and animations
+    ├── background_painter.dart # Custom background patterns
+    └── animations.dart         # Animation utilities
+```
+
+### 📁 Assets Structure
+
+```
+assets/
+├── images/                   # Background images and patterns
+├── animations/               # Lottie animation files
+├── icons/                    # Custom icons
+└── fonts/                    # Poppins font family
 ```
 
 ## Dependencies
 
+### Core Dependencies
+
 - `provider: ^6.1.1` - State management
-- `shared_preferences: ^2.2.2` - Local storage
-- `printing: ^5.12.0` - PDF printing
-- `pdf: ^3.10.7` - PDF generation
+- `shared_preferences: ^2.2.2` - Local storage for settings
+
+### UI & Animation
+
+- `animate_do: ^3.3.4` - Beautiful animations and transitions
+- `lottie: ^3.1.0` - Lottie animation support
+- `cached_network_image: ^3.3.0` - Image caching and optimization
+
+### Document Generation
+
+- `printing: ^5.12.0` - PDF printing functionality
+- `pdf: ^3.10.7` - PDF document generation
+
+### 🎨 **Note on Current Implementation**
+
+- **Custom Fonts**: Currently using system fonts (Poppins fonts commented out for compatibility)
+- **Background Images**: Using procedural patterns instead of static images for better performance
+- **Animation Files**: Custom Lottie animations included for enhanced user experience
+- **Responsive Design**: Fully responsive across mobile, tablet, and desktop platforms
+
+## 🎨 Visual Enhancements
+
+### Dark Theme System
+
+- **Enhanced Gradients**: Multi-layered background gradients throughout the app
+- **Custom Color Palette**: Restaurant-themed colors (red, orange, green, blue)
+- **Background Patterns**: Context-aware patterns for each screen
+- **Professional Typography**: Poppins font family for modern look
+
+### Animation System
+
+- **Splash Screen Animations**: Logo rotation, scaling, and fade effects
+- **Button Press Effects**: Scale animations and color transitions
+- **Card Hover Effects**: Interactive feedback on user interactions
+- **Status Indicators**: Pulsing animations for live status updates
+
+### Background Patterns
+
+- **Restaurant Screen**: Food and dining themed patterns with utensils
+- **Kitchen Screen**: Flame and cooking themed patterns
+- **Table Layout**: Table and chair arrangement patterns
+- **Bill Screen**: Professional document-style backgrounds
 
 ## Customization
 
 The system is designed to be easily customizable:
 
-- Modify menu items in `pos_provider.dart`
-- Adjust table layout in `floor_layout_screen.dart`
-- Customize UI themes in individual screen files
+### Adding New Features
+
+- **Menu Items**: Modify `pos_provider.dart` to add new menu categories
+- **Table Layout**: Adjust table positions in `floor_layout_screen.dart`
+- **Background Patterns**: Create new patterns in `background_painter.dart`
+- **Animations**: Add new effects using the `animations.dart` utilities
+
+### Theme Customization
+
+- **Colors**: Modify colors in `settings_provider.dart`
+- **Gradients**: Update gradient definitions in the theme
+- **Typography**: Adjust font families and sizes in `main.dart`
+- **Background Images**: Add new patterns to the assets folder
 
 ## Contributing
 
