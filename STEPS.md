@@ -1,17 +1,28 @@
 # Restaurant POS System - Flutter App
 
 ## Project Overview
+
 This is a complete Restaurant Point of Sale (POS) system built with Flutter, featuring a modern UI with dark theme and comprehensive functionality for restaurant operations.
 
 ## Features Implemented
 
+1)Login secren (restorent login)
+email
+passwrd
+
+2)after login you get user LIST that user is emaploy of restorent show we show list of empaly in mobile with name,in bracket role,
+
+3)if user select witer role the he show 4 dights Pin Password sccreen
+
 ### 1. Authentication System
+
 - **6-digit PIN Login**: Secure authentication with PIN entry
 - **Demo PIN**: `123456` for testing
 - **PIN Display**: Visual feedback with circular indicators
 - **Number Pad**: Interactive number pad with clear and delete functions
 
 ### 2. Restaurant Floor Layout
+
 - **Cartoon Table Design**: Visual representation of restaurant tables
 - **Table Management**: Each table supports up to 4 customers
 - **Table Joining**: Canvas-based visualization for joining tables
@@ -19,6 +30,7 @@ This is a complete Restaurant Point of Sale (POS) system built with Flutter, fea
 - **Status Indicators**: Shows occupied/available status
 
 ### 3. POS System with Fire/Hold Status
+
 - **Menu Categories**: Organized menu with categories (Combos, Thali, Soups, etc.)
 - **Item Management**: Add items to customer orders
 - **Status System**:
@@ -28,11 +40,13 @@ This is a complete Restaurant Point of Sale (POS) system built with Flutter, fea
   - **Pending Status**: Newly added items
 
 ### 4. Status Counters
+
 - **Real-time Counters**: Shows count of items in each status
 - **Visual Indicators**: Color-coded status with emojis
 - **Live Updates**: Counters update automatically when status changes
 
 ### 5. Bill Management System
+
 - **Bill Preview**: Complete bill with itemized list
 - **Remove Items**: Mark items for removal (shows strikethrough)
 - **Bill Calculation**: Automatic calculation of subtotal, tax (10%), and total
@@ -66,7 +80,9 @@ lib/
 ## Key Components
 
 ### POSProvider
+
 Central state management class handling:
+
 - PIN authentication
 - Table management
 - Order processing
@@ -74,11 +90,13 @@ Central state management class handling:
 - Bill calculations
 
 ### Table Model
+
 - Table information with customer support
 - Order items with status tracking
 - Table joining functionality
 
 ### Menu System
+
 - Comprehensive menu with 30+ items
 - Category-based organization
 - Status-based preparation workflow
@@ -86,28 +104,33 @@ Central state management class handling:
 ## Usage Instructions
 
 ### 1. Login
+
 - Enter the 6-digit PIN: `123456`
 - Use the number pad to input PIN
 - Tap "Login" to authenticate
 
 ### 2. Select Table
+
 - View restaurant floor layout
 - Tap on a table to select it
 - Optionally join tables by selecting multiple tables
 - Tap "Enter Table" to start taking orders
 
 ### 3. Take Orders
+
 - Browse menu categories on the right panel
 - Search for specific items
 - Tap on menu items to add to customer orders
 - Select which customer to add the item to
 
 ### 4. Manage Orders
+
 - View order status with color-coded indicators
 - Remove items from orders
 - Monitor status counters in real-time
 
 ### 5. Generate Bill
+
 - Tap "Bill" button to view complete bill
 - Mark items for removal (shows strikethrough)
 - Preview total with tax calculation
@@ -132,6 +155,7 @@ Central state management class handling:
 ## Customization
 
 The system is designed to be easily customizable:
+
 - Menu items can be modified in `pos_provider.dart`
 - Table layout can be adjusted in `floor_layout_screen.dart`
 - UI themes can be customized in individual screen files
@@ -140,6 +164,7 @@ The system is designed to be easily customizable:
 ## Future Enhancements
 
 Potential improvements could include:
+
 - Multi-language support
 - Payment integration
 - Inventory management

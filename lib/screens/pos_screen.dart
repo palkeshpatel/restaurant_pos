@@ -6,7 +6,6 @@ import '../models/table_model.dart';
 import '../models/menu_item.dart';
 import '../widgets/background_painter.dart';
 import 'kitchen_screen.dart';
-import 'floor_layout_screen.dart';
 
 class POSScreen extends StatefulWidget {
   const POSScreen({super.key});
@@ -15,7 +14,7 @@ class POSScreen extends StatefulWidget {
   State<POSScreen> createState() => _POSScreenState();
 }
 
-class _POSScreenState extends State<POSScreen> {
+class _POSScreenState extends State<POSScreen> with TickerProviderStateMixin {
   MenuCategory _selectedCategory = MenuCategory.combos;
   String _searchQuery = '';
   
@@ -23,6 +22,10 @@ class _POSScreenState extends State<POSScreen> {
   bool _showLeftPanel = true;
   bool _showRightPanel = true;
   bool _isMobile = false;
+  
+  // Animation controllers
+  late AnimationController _kitchenButtonController;
+  late Animation<double> _kitchenButtonAnimation;
 
   @override
   void initState() {
@@ -31,12 +34,34 @@ class _POSScreenState extends State<POSScreen> {
     _isMobile = false;
     _showLeftPanel = true;
     _showRightPanel = true;
+    
+    // Initialize animation controllers
+    _kitchenButtonController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    _kitchenButtonAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(
+      parent: _kitchenButtonController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Start the pulse animation
+    _kitchenButtonController.repeat(reverse: true);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _checkScreenSize();
+  }
+
+  @override
+  void dispose() {
+    _kitchenButtonController.dispose();
+    super.dispose();
   }
 
   void _checkScreenSize() {
@@ -394,40 +419,85 @@ class _POSScreenState extends State<POSScreen> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => _navigateToKitchen(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4fc3f7),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.room_service, size: 18),
-                            SizedBox(width: 8),
-                            Text('Kitchen'),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton(
-                      onPressed: () => _mergeTable(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.withValues(alpha: 0.3),
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.arrow_back, size: 18),
-                          SizedBox(width: 4),
-                          Text('Merge', style: TextStyle(fontSize: 12)),
-                        ],
+                      child: AnimatedBuilder(
+                        animation: _kitchenButtonAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _kitchenButtonAnimation.value,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFff6b6b),
+                                    Color(0xFFee5a24),
+                                    Color(0xFFff9ff3),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFff6b6b).withValues(alpha: 0.4),
+                                    blurRadius: 8 * _kitchenButtonAnimation.value,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                  BoxShadow(
+                                    color: const Color(0xFFff9ff3).withValues(alpha: 0.3),
+                                    blurRadius: 16 * _kitchenButtonAnimation.value,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => _navigateToKitchen(),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(
+                                            Icons.restaurant_menu,
+                                            size: 20,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        const Text(
+                                          'KITCHEN',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 1.2,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -1497,14 +1567,6 @@ class _POSScreenState extends State<POSScreen> {
   }
 
 
-  void _mergeTable() {
-    // Navigate to floor layout to select tables for merging
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const FloorLayoutScreen(),
-      ),
-    );
-  }
 
   void _navigateToKitchen() {
     Navigator.of(context).push(
