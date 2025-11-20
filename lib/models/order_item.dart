@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
-class MenuItem {
+class OrderItem {
   final String name;
   final double price;
   final IconData icon;
-  final String category;
+  final DateTime addedTime;
 
-  MenuItem({
+  OrderItem({
     required this.name,
     required this.price,
     required this.icon,
-    required this.category,
+    required this.addedTime,
   });
 }

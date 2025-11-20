@@ -1,843 +1,272 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/pos_provider.dart';
-import '../providers/settings_provider.dart';
-import '../models/table_model.dart';
+import '../models/category.dart';
 import '../models/menu_item.dart';
-import '../widgets/background_painter.dart';
-import 'kitchen_screen.dart';
+import '../models/order_item.dart';
+import 'kitchen_status_screen.dart';
+import 'settings_screen.dart';
+import '../widgets/status_count_widget.dart';
 
 class POSScreen extends StatefulWidget {
-  const POSScreen({super.key});
+  final Function(ThemeData) onThemeChange;
+
+  const POSScreen({super.key, required this.onThemeChange});
 
   @override
   State<POSScreen> createState() => _POSScreenState();
 }
 
-class _POSScreenState extends State<POSScreen> with TickerProviderStateMixin {
-  MenuCategory _selectedCategory = MenuCategory.combos;
-  String _searchQuery = '';
-  
-  // Responsive layout state
-  bool _showLeftPanel = true;
-  bool _showRightPanel = true;
-  bool _isMobile = false;
-  
-  // Animation controllers
-  late AnimationController _kitchenButtonController;
-  late Animation<double> _kitchenButtonAnimation;
+class _POSScreenState extends State<POSScreen> {
+  late List<Category> categories;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Initialize with default values
-    _isMobile = false;
-    _showLeftPanel = true;
-    _showRightPanel = true;
-    
-    // Initialize animation controllers
-    _kitchenButtonController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    _kitchenButtonAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _kitchenButtonController,
-      curve: Curves.easeInOut,
-    ));
-    
-    // Start the pulse animation
-    _kitchenButtonController.repeat(reverse: true);
+    categories = [
+      Category(name: 'Appetizers', icon: Icons.restaurant, isActive: true),
+      Category(name: 'Main Courses', icon: Icons.restaurant_menu),
+      Category(name: 'Desserts', icon: Icons.icecream),
+      Category(name: 'Drinks', icon: Icons.local_drink),
+      Category(name: 'Specials', icon: Icons.star),
+    ];
+    _startTimer();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _checkScreenSize();
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
   void dispose() {
-    _kitchenButtonController.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 
-  void _checkScreenSize() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    // Better tablet detection - only consider mobile if screen is small in both dimensions
-    final isMobile = screenWidth < 1024 || (screenWidth < 1200 && screenHeight < 800);
+  final List<MenuItem> menuItems = [
+    MenuItem(name: 'Bruschetta', price: 6.99, icon: Icons.bakery_dining, category: 'Appetizers'),
+    MenuItem(name: 'Garlic Bread', price: 4.99, icon: Icons.bakery_dining, category: 'Appetizers'),
+    MenuItem(name: 'Mozzarella Sticks', price: 7.99, icon: Icons.lunch_dining, category: 'Appetizers'),
+    MenuItem(name: 'Chicken Wings', price: 9.99, icon: Icons.kebab_dining, category: 'Appetizers'),
+    MenuItem(name: 'Nachos', price: 8.99, icon: Icons.dining, category: 'Appetizers'),
+    MenuItem(name: 'Spring Rolls', price: 6.99, icon: Icons.egg, category: 'Appetizers'),
+  ];
+
+  final List<OrderItem> orderItems = [
+    OrderItem(name: 'Margherita Pizza', price: 12.99, icon: Icons.local_pizza, addedTime: DateTime.now()),
+    OrderItem(name: 'Caesar Salad', price: 8.99, icon: Icons.eco, addedTime: DateTime.now()),
+    OrderItem(name: 'Coke', price: 2.50, icon: Icons.local_drink, addedTime: DateTime.now()),
+  ];
+
+  String selectedCategory = 'Appetizers';
+  int holdCount = 2;
+  int kitchenCount = 1;
+  int servedCount = 0;
+
+  double get subtotal => orderItems.fold(0, (sum, item) => sum + item.price);
+  double get tax => subtotal * 0.1;
+  double get total => subtotal + tax;
+
+  void _selectCategory(String category) {
+    setState(() {
+      selectedCategory = category;
+      // Update active state
+      categories = categories.map((cat) {
+        return Category(
+          name: cat.name,
+          icon: cat.icon,
+          isActive: cat.name == category,
+        );
+      }).toList();
+    });
+  }
+
+  void _addToOrder(MenuItem item) {
+    setState(() {
+      orderItems.add(OrderItem(
+        name: item.name,
+        price: item.price,
+        icon: item.icon,
+        addedTime: DateTime.now(),
+      ));
+    });
     
-    if (_isMobile != isMobile) {
-      setState(() {
-        _isMobile = isMobile;
-        if (_isMobile) {
-          _showLeftPanel = false;
-          _showRightPanel = false;
-        } else {
-          // Always show panels on tablet/desktop - no need for toggle buttons
-          _showLeftPanel = true;
-          _showRightPanel = true;
-        }
-      });
-    }
+    // Show success feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${item.name} added to order'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
+  void _sendToKitchen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => KitchenStatusScreen(onThemeChange: widget.onThemeChange),
+      ),
+    );
+  }
+
+  void _showSettings() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SettingsScreen(onThemeChange: widget.onThemeChange),
+      backgroundColor: Colors.transparent,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final settingsProvider = Provider.of<SettingsProvider>(context);
-
-    // Ensure we have the correct screen size detection
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkScreenSize();
-    });
-
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    final isTablet = screenWidth >= 768 && screenWidth < 1024;
+    
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: SettingsProvider.darkGradient,
-        ),
-        child: Stack(
-          children: [
-            // Background pattern
-            if (settingsProvider.showBackgroundImages)
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: RestaurantBackgroundPainter(
-                    opacity: 0.04,
-                  ),
-                ),
-              ),
-
-            SafeArea(
-              child: Consumer<POSProvider>(
-                builder: (context, posProvider, child) {
-                  if (posProvider.selectedTable == null) {
-                    return Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: SettingsProvider.restaurantRed.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: SettingsProvider.restaurantRed,
-                              size: 48,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No table selected',
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Please select a table from the floor layout',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  return _buildResponsiveLayout(posProvider);
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResponsiveLayout(POSProvider posProvider) {
-    if (_isMobile) {
-      return _buildMobileLayout(posProvider);
-    } else {
-      return _buildDesktopLayout(posProvider);
-    }
-  }
-
-  Widget _buildMobileLayout(POSProvider posProvider) {
-    return Column(
-                children: [
-        // Mobile Header with Navigation
-        _buildMobileHeader(),
-        
-        // Main Content Area
-                  Expanded(
-          child: _showLeftPanel 
-              ? _buildTablePanel(posProvider)
-              : _showRightPanel 
-                  ? _buildCategoryPanel(posProvider)
-                  : _buildMenuPanel(posProvider),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDesktopLayout(POSProvider posProvider) {
-    return Row(
-      children: [
-        // Left Panel - Table & Customers
-        if (_showLeftPanel)
-          SizedBox(
-            width: MediaQuery.of(context).size.width * 0.35,
-            child: _buildTablePanel(posProvider),
-          ),
-
-        // Middle Panel - Menu Items
-        Expanded(
-          child: _buildMenuPanel(posProvider),
-        ),
-
-        // Right Panel - Categories & Status
-        if (_showRightPanel)
-          SizedBox(
-            width: MediaQuery.of(context).size.width * 0.15,
-            child: _buildCategoryPanel(posProvider),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildMobileHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1a2a3a),
-        border: Border(
-          bottom: BorderSide(color: Colors.white, width: 0.1),
-        ),
-      ),
-      child: Row(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SafeArea(
+        child: Column(
         children: [
-          // Navigation Buttons
-          Expanded(
-            child: Row(
-              children: [
-                _buildMobileNavButton(
-                  icon: Icons.description_outlined,
-                  label: 'Orders',
-                  isActive: _showLeftPanel,
-                  onTap: () => _toggleLeftPanel(),
-                ),
-                _buildMobileNavButton(
-                  icon: Icons.restaurant_menu,
-                  label: 'Menu',
-                  isActive: !_showLeftPanel && !_showRightPanel,
-                  onTap: () => _showMenuPanel(),
-                ),
-                _buildMobileNavButton(
-                  icon: Icons.grid_view,
-                  label: 'Categories',
-                  isActive: _showRightPanel,
-                  onTap: () => _toggleRightPanel(),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMobileNavButton({
-    required IconData icon,
-    required String label,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-          decoration: BoxDecoration(
-            color: isActive ? const Color(0xFF2196f3) : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isActive ? Colors.white : Colors.white70,
-                size: 22,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isActive ? Colors.white : Colors.white70,
-                  fontSize: 11,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-
-  void _toggleLeftPanel() {
-    // Only allow toggling on mobile devices
-    if (_isMobile) {
-      setState(() {
-        _showLeftPanel = !_showLeftPanel;
-        if (_showLeftPanel) {
-          _showRightPanel = false;
-        }
-      });
-    }
-  }
-
-  void _toggleRightPanel() {
-    // Only allow toggling on mobile devices
-    if (_isMobile) {
-      setState(() {
-        _showRightPanel = !_showRightPanel;
-        if (_showRightPanel) {
-          _showLeftPanel = false;
-        }
-      });
-    }
-  }
-
-  void _showMenuPanel() {
-    // Only allow panel switching on mobile devices
-    if (_isMobile) {
-      setState(() {
-        _showLeftPanel = false;
-        _showRightPanel = false;
-      });
-    }
-  }
-
-  Widget _buildTablePanel(POSProvider posProvider) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        border: const Border(
-          right: BorderSide(color: Colors.white, width: 0.1),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Table Header
+          // Header
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.white, width: 0.1),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  posProvider.selectedTable!.name,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4fc3f7),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Occupied',
-                    style: TextStyle(color: Colors.green, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Customers Grid
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Show all customers
-                  ...posProvider.selectedTable!.customers.map((customer) {
-                    return _buildCustomerCard(customer, posProvider);
-                  }),
-                ],
-              ),
-            ),
-          ),
-          
-          // Order Summary
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Colors.white, width: 0.1),
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildSummaryRow('Subtotal:', posProvider.calculateSubtotal()),
-                _buildSummaryRow('Tax (10%):', posProvider.calculateTax()),
-                const Divider(color: Colors.white),
-                _buildSummaryRow('Total:', posProvider.calculateTotal(), isTotal: true),
-                
-                const SizedBox(height: 20),
-                
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => posProvider.clearAllOrders(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.withValues(alpha: 0.3),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Clear All'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: AnimatedBuilder(
-                        animation: _kitchenButtonAnimation,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _kitchenButtonAnimation.value,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFff6b6b),
-                                    Color(0xFFee5a24),
-                                    Color(0xFFff9ff3),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFff6b6b).withValues(alpha: 0.4),
-                                    blurRadius: 8 * _kitchenButtonAnimation.value,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                  BoxShadow(
-                                    color: const Color(0xFFff9ff3).withValues(alpha: 0.3),
-                                    blurRadius: 16 * _kitchenButtonAnimation.value,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => _navigateToKitchen(),
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: const Icon(
-                                            Icons.restaurant_menu,
-                                            size: 20,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        const Text(
-                                          'KITCHEN',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1.2,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          width: 6,
-                                          height: 6,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomerCard(Customer customer, POSProvider posProvider) {
-    return Container(
-      key: ValueKey('customer_${customer.id}'),
-      margin: const EdgeInsets.only(bottom: 15),
-      height: 120, // Fixed height for customer cards
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Customer Header
-          Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
             decoration: BoxDecoration(
-              color: const Color(0xFFbb86fc).withValues(alpha: 0.2),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  customer.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFbb86fc),
-                    fontSize: 16,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${customer.orders.length} items',
-                    style: const TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Drag Target Area
-          Expanded(
-            child: DragTarget<MenuItem>(
-              key: ValueKey('drag_target_${customer.id}'),
-              onWillAcceptWithDetails: (details) {
-                return true;
-              },
-              onAcceptWithDetails: (details) {
-                _addItemToCustomer(details.data, customer.id, posProvider);
-              },
-              onLeave: (data) {
-                // Item left the drop target
-              },
-              builder: (context, candidateData, rejectedData) {
-                final isHovering = candidateData.isNotEmpty;
-                return Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: isHovering 
-                        ? Colors.blue.withValues(alpha: 0.3)
-                        : Colors.transparent,
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(10),
-                      bottomRight: Radius.circular(10),
-                    ),
-                    border: isHovering 
-                        ? Border.all(color: Colors.blue, width: 3)
-                        : Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
-                  ),
-                  child: customer.orders.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                isHovering ? Icons.download_done : Icons.add_circle_outline,
-                                color: isHovering ? Colors.blue : Colors.white54,
-                                size: 32,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                isHovering ? 'Drop here!' : 'Drag items here',
-                                style: TextStyle(
-                                  color: isHovering ? Colors.blue : Colors.white54,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 14,
-                                  fontWeight: isHovering ? FontWeight.bold : FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(8),
-                          itemCount: customer.orders.length,
-                          itemBuilder: (context, index) {
-                            final order = customer.orders[index];
-                            return _buildOrderItem(order, customer.id, posProvider);
-                          },
-                        ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrderItem(OrderItem order, int customerId, POSProvider posProvider) {
-    return Container(
-      key: ValueKey('order_item_${order.id}_$customerId'),
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(order.icon, style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        order.name,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(order.status).withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '${order.status.emoji} ${order.status.displayName}',
-                        style: TextStyle(
-                          color: _getStatusColor(order.status),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Text(
-            '₹${order.price.toStringAsFixed(0)}',
-            style: const TextStyle(
-              color: Color(0xFF4caf50),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          IconButton(
-            key: ValueKey('remove_${order.id}_$customerId'),
-            onPressed: () => posProvider.removeOrderFromCustomer(customerId, order.id),
-            icon: const Icon(Icons.close, color: Colors.red, size: 16),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryRow(String label, double amount, {bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isTotal ? 18 : 15,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          Text(
-            '₹${amount.toStringAsFixed(0)}',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isTotal ? 18 : 15,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMenuPanel(POSProvider posProvider) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.2),
-        border: _isMobile ? null : const Border(
-          right: BorderSide(color: Colors.white, width: 0.1),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Menu Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
-                bottom: BorderSide(color: Colors.white, width: 0.1),
+                bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Category Dropdown
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary),
+                  iconSize: isMobile ? 20 : 24,
+                ),
+                SizedBox(width: isMobile ? 8 : 20),
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                  child: Text(
+                    'POS System',
+                    style: TextStyle(
+                      fontSize: isMobile ? 18 : 24,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<MenuCategory>(
-                        value: _selectedCategory,
-                        isExpanded: true,
-                        dropdownColor: const Color(0xFF2a3a4a),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                        items: MenuCategory.values.map((category) {
-                          return DropdownMenuItem<MenuCategory>(
-                            value: category,
+                  ),
+                ),
+                IconButton(
+                  onPressed: _showSettings,
+                  icon: const Icon(Icons.settings),
+                  color: Theme.of(context).colorScheme.primary,
+                  iconSize: isMobile ? 20 : 24,
+                ),
+              ],
+            ),
+          ),
+          // Main Content
+          Expanded(
+            child: isMobile 
+              ? _buildMobileLayout()
+              : Row(
+                  children: [
+                    // Order Section (300px or 25%)
+                    SizedBox(
+                      width: isTablet ? 300 : screenWidth * 0.25,
+                      child: _buildOrderSection(),
+                    ),
+                    // Menu Section (remaining space)
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isMobile ? 15 : 20),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              border: Border(
+                                bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                              ),
+                            ),
                             child: Row(
                               children: [
-                                Text(category.emoji, style: const TextStyle(fontSize: 18)),
-                                const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    category.displayName,
-                                    style: const TextStyle(fontSize: 14),
+                                    selectedCategory,
+                                    style: TextStyle(
+                                      fontSize: isMobile ? 20 : 24,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (MenuCategory? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _selectedCategory = newValue;
-                              _searchQuery = '';
-                            });
-                          }
-                        },
+                          ),
+                          Expanded(
+                            child: _buildMenuSection(),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Row(
-                  children: [
-                    // Search Bar
-                    Container(
-                      width: _isMobile ? 150 : 200,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: TextField(
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          hintText: 'Search items...',
-                          hintStyle: TextStyle(color: Colors.white54),
-                          border: InputBorder.none,
-                          icon: Icon(Icons.search, color: Colors.white54),
-                        ),
-                      ),
+                    // Category Section (200px or 20%)
+                    SizedBox(
+                      width: isTablet ? 200 : screenWidth * 0.2,
+                      child: _buildCategorySection(),
                     ),
                   ],
                 ),
+          ),
+        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          // Tab Bar
+          Container(
+            color: Theme.of(context).colorScheme.surface,
+            child: TabBar(
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: Theme.of(context).colorScheme.primary,
+              tabs: const [
+                Tab(text: 'Menu'),
+                Tab(text: 'Order'),
               ],
             ),
           ),
-          
-          // Menu Items List (Scrollable for mobile/tablet)
           Expanded(
-            child: _isMobile 
-                ? _buildMobileMenuGrid(posProvider)
-                : ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: _getFilteredItems(posProvider).length,
-              itemBuilder: (context, index) {
-                final item = _getFilteredItems(posProvider)[index];
-                return _buildMenuItemCard(item, posProvider);
-              },
+            child: TabBarView(
+              children: [
+                // Menu Tab
+                Column(
+                  children: [
+                    Expanded(
+                      child: _buildMenuSection(),
+                    ),
+                    _buildCategorySection(),
+                  ],
+                ),
+                // Order Tab
+                _buildOrderSection(),
+              ],
             ),
           ),
         ],
@@ -845,341 +274,204 @@ class _POSScreenState extends State<POSScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMenuItemCard(MenuItem item, POSProvider posProvider) {
-    return Draggable<MenuItem>(
-      key: ValueKey('draggable_item_${item.id}'),
-      data: item,
-      dragAnchorStrategy: (draggable, context, position) => Offset.zero,
-      feedback: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 250,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
+  Widget _buildOrderSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            offset: const Offset(5, 0),
+            blurRadius: 15,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(item.icon, style: const TextStyle(fontSize: 20)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                item.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
-      childWhenDragging: Container(
-        key: ValueKey('menu_item_${item.id}'),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    item.icon,
-                    style: const TextStyle(fontSize: 32, color: Colors.white24),
-                  ),
-                ),
+      child: Column(
+        children: [
+          // Selected Table Info
+          Container(
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.name,
-                      style: const TextStyle(
-                        color: Colors.white24,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.description,
-                      style: const TextStyle(
-                        color: Colors.white12,
-                        fontSize: 12,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.chair, 
+                  size: isMobile ? 24 : 28, 
+                  color: Theme.of(context).colorScheme.primary
                 ),
-              ),
-              Column(
-                children: [
-                  Text(
-                    '₹${item.price.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      color: Colors.white24,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Text(
-                      'Dragging...',
-                      style: TextStyle(fontSize: 12, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-      child: Container(
-        key: ValueKey('menu_item_${item.id}'),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _showCustomerSelectionDialog(item, posProvider),
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  // Item Icon
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        item.icon,
-                        style: const TextStyle(fontSize: 32),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  
-                  // Item Details
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.name,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.description,
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Price and Add Button
-                  Column(
+                SizedBox(width: isMobile ? 10 : 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '₹${item.price.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          color: Color(0xFF4caf50),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                        'Table 1',
+                        style: TextStyle(
+                          fontSize: isMobile ? 16 : 18,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        key: ValueKey('add_button_${item.id}'),
-                        onPressed: () {
-                          try {
-                            _showCustomerSelectionDialog(item, posProvider);
-                          } catch (e) {
-                            // Handle error silently or show user-friendly message
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4fc3f7),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          minimumSize: Size.zero,
-                        ),
-                        child: const Text(
-                          'Add',
-                          style: TextStyle(fontSize: 12),
+                      Text(
+                        'Ground Floor',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: isMobile ? 12 : 14,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryPanel(POSProvider posProvider) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha:0.25),
-        border: _isMobile ? null : const Border(
-          left: BorderSide(color: Colors.white, width: 0.1),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Categories Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-              'Categories',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4fc3f7),
-              ),
                 ),
-                if (_isMobile)
-                  IconButton(
-                    onPressed: () => _showMenuPanel(),
-                    icon: const Icon(Icons.close, color: Colors.white54),
-                    tooltip: 'Close Categories',
-                  ),
               ],
             ),
           ),
-          
+          // Order Items
           Expanded(
-            child: _isMobile 
-                ? _buildMobileCategoryGrid()
-                : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              itemCount: MenuCategory.values.length,
-              itemBuilder: (context, index) {
-                final category = MenuCategory.values[index];
-                      return _buildCategoryItem(category);
-              },
+            child: Container(
+              color: const Color(0xFFFFF3E0),
+              padding: EdgeInsets.all(isMobile ? 10 : 15),
+              child: orderItems.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.shopping_cart_outlined,
+                            size: 64,
+                            color: Colors.grey.withOpacity(0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No items in order',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: orderItems.length,
+                      itemBuilder: (context, index) {
+                        final item = orderItems[index];
+                        final duration = DateTime.now().difference(item.addedTime);
+                        final minutes = duration.inMinutes;
+                        final seconds = duration.inSeconds % 60;
+                        return Card(
+                          elevation: 3,
+                          margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(isMobile ? 10 : 12),
+                            child: Row(
+                              children: [
+                                Icon(item.icon, 
+                                     color: Theme.of(context).colorScheme.primary,
+                                     size: isMobile ? 24 : 32),
+                                SizedBox(width: isMobile ? 8 : 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        item.name,
+                                        style: TextStyle(
+                                          fontSize: isMobile ? 14 : 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      SizedBox(height: isMobile ? 2 : 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            '\$${item.price.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 16 : 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: Theme.of(context).colorScheme.primary,
+                                            ),
+                                          ),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.timer, size: isMobile ? 12 : 14, color: Colors.orange),
+                                              SizedBox(width: isMobile ? 2 : 4),
+                                              Text(
+                                                '${minutes}m ${seconds}s',
+                                                style: TextStyle(
+                                                  fontSize: isMobile ? 10 : 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Colors.orange,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ),
-          
-          // Status Counters
+          // Order Total
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
-                top: BorderSide(color: Colors.white, width: 0.1),
+                top: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
               ),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Status Counters',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF4fc3f7),
+                _buildTotalRow('Subtotal:', subtotal, isMobile: isMobile),
+                _buildTotalRow('Tax (10%):', tax, isMobile: isMobile),
+                const Divider(),
+                _buildTotalRow('Total:', total, isTotal: true, isMobile: isMobile),
+                SizedBox(height: isMobile ? 10 : 15),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: orderItems.isEmpty ? null : _sendToKitchen,
+                    icon: Icon(Icons.fireplace, size: isMobile ? 18 : 24),
+                    label: Text(
+                      'Send to Kitchen',
+                      style: TextStyle(fontSize: isMobile ? 14 : 16),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      disabledForegroundColor: Colors.grey.shade600,
+                      padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 5,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                ...ItemStatus.values.map((status) {
-                  final count = posProvider.statusCounters[status] ?? 0;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(status).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Text(status.emoji),
-                            const SizedBox(width: 8),
-                            Text(
-                              status.displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          count.toString(),
-                          style: TextStyle(
-                            color: _getStatusColor(status),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
               ],
             ),
           ),
@@ -1188,392 +480,185 @@ class _POSScreenState extends State<POSScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMobileMenuGrid(POSProvider posProvider) {
-    final items = _getFilteredItems(posProvider);
+  Widget _buildMenuSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    final isTablet = screenWidth >= 768 && screenWidth < 1024;
     
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.8,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return _buildMobileMenuItemCard(item, posProvider);
-      },
-    );
-  }
-
-  Widget _buildMobileMenuItemCard(MenuItem item, POSProvider posProvider) {
+    int crossAxisCount;
+    if (isMobile) {
+      crossAxisCount = 2;
+    } else if (isTablet) {
+      crossAxisCount = 3;
+    } else {
+      crossAxisCount = 4;
+    }
+    
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showCustomerSelectionDialog(item, posProvider),
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Item Icon
-                Center(
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        item.icon,
-                        style: const TextStyle(fontSize: 24),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                
-                // Item Name
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                
-                // Item Description
-                Text(
-                  item.description,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 10,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const Spacer(),
-                
-                // Price and Add Button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      color: const Color(0xFFFFF3E0),
+      padding: EdgeInsets.all(isMobile ? 12 : 20),
+      child: GridView.builder(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: isMobile ? 12 : 20,
+          mainAxisSpacing: isMobile ? 12 : 20,
+          childAspectRatio: isMobile ? 0.75 : 0.85,
+        ),
+        itemCount: menuItems.length,
+        itemBuilder: (context, index) {
+          final item = menuItems[index];
+          return Card(
+            elevation: 5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: InkWell(
+              onTap: () => _addToOrder(item),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: EdgeInsets.all(isMobile ? 12 : 16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '₹${item.price.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: Color(0xFF4caf50),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    Container(
+                      padding: EdgeInsets.all(isMobile ? 8 : 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        item.icon,
+                        size: isMobile ? 32 : 48,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: () => _showCustomerSelectionDialog(item, posProvider),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4fc3f7),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
+                    SizedBox(height: isMobile ? 8 : 12),
+                    Flexible(
+                      child: Text(
+                        item.name,
+                        style: TextStyle(
+                          fontSize: isMobile ? 12 : 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      child: const Text(
-                        'Add',
-                        style: TextStyle(fontSize: 10),
+                    ),
+                    SizedBox(height: isMobile ? 4 : 8),
+                    Text(
+                      '\$${item.price.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: isMobile ? 14 : 16,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildMobileCategoryGrid() {
+  Widget _buildCategorySection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            offset: const Offset(-5, 0),
+            blurRadius: 15,
+          ),
+        ],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category Dropdown for Mobile
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.category,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<MenuCategory>(
-                      value: _selectedCategory,
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF2a3a4a),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+          // Categories
+          Expanded(
+            child: ListView.builder(
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return InkWell(
+                  onTap: () => _selectCategory(category.name),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: category.isActive ? Theme.of(context).colorScheme.primary : null,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.grey.withOpacity(0.2),
+                          width: 0.5,
+                        ),
                       ),
-                      icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                      items: MenuCategory.values.map((category) {
-                        return DropdownMenuItem<MenuCategory>(
-                          value: category,
-                          child: Row(
-                            children: [
-                              Text(category.emoji, style: const TextStyle(fontSize: 18)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  category.displayName,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          category.icon,
+                          color: category.isActive ? Colors.white : Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            category.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: category.isActive ? FontWeight.w600 : FontWeight.w400,
+                              color: category.isActive ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                            ),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (MenuCategory? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedCategory = newValue;
-                            _searchQuery = '';
-                          });
-                          // Switch to menu panel after selecting category
-                          _showMenuPanel();
-                        }
-                      },
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Category Grid (keep for visual reference)
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.1,
-              ),
-              itemCount: MenuCategory.values.length,
-              itemBuilder: (context, index) {
-                final category = MenuCategory.values[index];
-                return _buildCategoryItem(category, isMobile: true);
+                );
               },
             ),
+          ),
+          // Status Counts
+          StatusCountWidget(
+            holdCount: holdCount,
+            kitchenCount: kitchenCount,
+            servedCount: servedCount,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryItem(MenuCategory category, {bool isMobile = false}) {
-    final isSelected = category == _selectedCategory;
-    
-    return Container(
-      key: ValueKey('category_${category.name}'),
-      margin: isMobile ? null : const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
-        onTap: () {
-          try {
-            setState(() {
-              _selectedCategory = category;
-              _searchQuery = '';
-            });
-
-            // On mobile, switch to menu panel after selecting category
-            if (_isMobile) {
-              _showMenuPanel();
-            }
-          } catch (e) {
-            // Handle error silently or show user-friendly message
-          }
-        },
-        child: Container(
-            padding: EdgeInsets.all(isMobile ? 16 : 12),
-            decoration: BoxDecoration(
-              color: isSelected 
-                  ? const Color(0xFF2196f3).withValues(alpha: 0.3)
-                  : Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isSelected ? const Color(0xFF2196f3) : Colors.white.withValues(alpha: 0.1),
+  Widget _buildTotalRow(String label, double amount, {bool isTotal = false, bool isMobile = false}) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isMobile ? 6 : 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: isTotal ? (isMobile ? 14 : 16) : (isMobile ? 12 : 14),
+                fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Category Icon with better styling
-                Container(
-                  width: isMobile ? 50 : 40,
-                  height: isMobile ? 50 : 40,
-                  decoration: BoxDecoration(
-                    color: isSelected 
-                        ? Colors.white.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(isMobile ? 25 : 20),
-                    border: Border.all(
-                      color: isSelected ? Colors.white : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      category.emoji,
-                      style: TextStyle(fontSize: isMobile ? 24 : 18),
-                    ),
-                  ),
-                ),
-                SizedBox(height: isMobile ? 8 : 5),
-                Text(
-                  category.displayName,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white70,
-                    fontSize: isMobile ? 12 : 10,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (isSelected)
-                  Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-              ],
+          ),
+          Text(
+            '\$${amount.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: isTotal ? (isMobile ? 18 : 20) : (isMobile ? 14 : 16),
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
-        ),
-    );
-  }
-
-  List<MenuItem> _getFilteredItems(POSProvider posProvider) {
-    var items = posProvider.menuItems
-        .where((item) => item.category == _selectedCategory);
-
-    if (_searchQuery.isNotEmpty) {
-      items = items
-          .where((item) => item.name.toLowerCase().contains(_searchQuery.toLowerCase()));
-    }
-
-    return items.toList();
-  }
-
-  Color _getStatusColor(ItemStatus status) {
-    switch (status) {
-      case ItemStatus.fire:
-        return Colors.red;
-      case ItemStatus.hold:
-        return Colors.orange;
-      case ItemStatus.served:
-        return Colors.green;
-    }
-  }
-
-  void _showCustomerSelectionDialog(MenuItem item, POSProvider posProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add ${item.name} to Customer'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: posProvider.selectedTable!.customers.map((customer) {
-            return ListTile(
-              title: Text(customer.name),
-              onTap: () {
-                _addItemToCustomer(item, customer.id, posProvider);
-                Navigator.of(context).pop();
-              },
-            );
-          }).toList(),
-        ),
+        ],
       ),
     );
   }
-
-  void _addItemToCustomer(MenuItem item, int customerId, POSProvider posProvider) {
-    try {
-      if (posProvider.selectedTable == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ERROR: No table selected! Please select a table first.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      posProvider.addOrderToCustomer(customerId, item);
-      
-      final customerName = posProvider.selectedTable!.customers.firstWhere((c) => c.id == customerId).name;
-      final totalItems = posProvider.getBillItems().length;
-      final totalAmount = posProvider.calculateTotal();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('✅ ${item.name} added to $customerName'),
-              const SizedBox(height: 4),
-              Text('Total Items: $totalItems | Total: ₹${totalAmount.toStringAsFixed(0)}'),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } catch (e) {
-      // Handle error silently or show user-friendly message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error adding item: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-
-
-  void _navigateToKitchen() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const KitchenScreen(),
-      ),
-    );
-  }
-
 }
