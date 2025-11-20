@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/employee.dart';
+import '../widgets/avatar_widget.dart';
 import 'settings_screen.dart';
 import 'admin_employees_screen.dart';
 import 'admin_items_screen.dart';
@@ -98,14 +99,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
+                          AvatarWidget(
+                            imageUrl: widget.employee?.avatar,
+                            initials: widget.employee?.initials ?? 'A',
+                            radius: 24,
                             backgroundColor: Colors.indigo,
-                            child: Text(
-                              widget.employee != null
-                                  ? '${widget.employee!.firstName[0]}${widget.employee!.lastName[0]}'
-                                  : 'A',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(

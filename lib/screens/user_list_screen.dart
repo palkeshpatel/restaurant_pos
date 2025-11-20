@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../models/employee.dart';
+import '../widgets/avatar_widget.dart';
 import 'pin_screen.dart';
 import 'settings_screen.dart';
 
@@ -110,11 +111,6 @@ class _UserListScreenState extends State<UserListScreen> {
                         itemCount: employees.length,
                         itemBuilder: (context, index) {
                           final employee = employees[index];
-                          final initials = employee.firstName.isNotEmpty && employee.lastName.isNotEmpty
-                              ? '${employee.firstName[0]}${employee.lastName[0]}'
-                              : employee.firstName.isNotEmpty
-                                  ? employee.firstName[0]
-                                  : 'E';
                           return Card(
                             elevation: 5,
                             margin: EdgeInsets.only(bottom: isMobile ? 10 : 15),
@@ -122,17 +118,11 @@ class _UserListScreenState extends State<UserListScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: ListTile(
-                              leading: CircleAvatar(
+                              leading: AvatarWidget(
+                                imageUrl: employee.avatar,
+                                initials: employee.initials,
                                 radius: isMobile ? 24 : 30,
                                 backgroundColor: Theme.of(context).colorScheme.primary,
-                                child: Text(
-                                  initials.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: isMobile ? 20 : 24,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
                               ),
                               title: Text(
                                 employee.fullName,
