@@ -1,43 +1,41 @@
 import 'package:flutter/material.dart';
 import 'settings_screen.dart';
 import 'hotel_safe_screen.dart';
+import 'hotel_safe_pin_screen.dart';
+import '../models/role.dart';
+import '../models/employee.dart';
 
 class HotelSafeLoginScreen extends StatefulWidget {
   final Function(ThemeData) onThemeChange;
+  final Role? role;
 
-  const HotelSafeLoginScreen({super.key, required this.onThemeChange});
+  const HotelSafeLoginScreen({
+    super.key,
+    required this.onThemeChange,
+    this.role,
+  });
 
   @override
   State<HotelSafeLoginScreen> createState() => _HotelSafeLoginScreenState();
 }
 
 class _HotelSafeLoginScreenState extends State<HotelSafeLoginScreen> {
-  String pin = '';
-
-  void _addDigit(String digit) {
-    if (pin.length < 4) {
-      setState(() {
-        pin += digit;
-      });
-      if (pin.length == 4) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HotelSafeScreen(onThemeChange: widget.onThemeChange),
-            ),
-          );
-        });
-      }
-    }
+  List<Employee> get employees {
+    if (widget.role == null) return [];
+    return widget.role!.employees.where((e) => e.isActive).toList();
   }
 
-  void _removeDigit() {
-    if (pin.isNotEmpty) {
-      setState(() {
-        pin = pin.substring(0, pin.length - 1);
-      });
-    }
+  void _selectEmployee(Employee employee) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HotelSafePinScreen(
+          employee: employee,
+          roleName: widget.role?.name ?? 'Hotel Safe',
+          onThemeChange: widget.onThemeChange,
+        ),
+      ),
+    );
   }
 
   void _showSettings() {
@@ -83,7 +81,7 @@ class _HotelSafeLoginScreenState extends State<HotelSafeLoginScreen> {
                   SizedBox(width: isMobile ? 8 : 20),
                   Expanded(
                     child: Text(
-                      'Hotel Safe Login',
+                      widget.role?.name ?? 'Hotel Safe',
                       style: TextStyle(
                         fontSize: isMobile ? 18 : 24,
                         fontWeight: FontWeight.w600,
@@ -100,112 +98,66 @@ class _HotelSafeLoginScreenState extends State<HotelSafeLoginScreen> {
               ),
             ),
             Expanded(
-              child: Center(
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  padding: EdgeInsets.all(isMobile ? 24 : 40),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 15,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Column(
-                        children: [
-                          Icon(
-                            Icons.security,
-                            size: isMobile ? 48 : 64,
-                            color: Colors.brown,
+              child: Padding(
+                padding: EdgeInsets.all(isMobile ? 12 : 20),
+                child: employees.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No employees found',
+                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
+                            color: Colors.grey,
                           ),
-                          SizedBox(height: isMobile ? 12 : 16),
-                          Text(
-                            'Hotel Safe',
-                            style: TextStyle(
-                              fontSize: isMobile ? 20 : 28,
-                              fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: employees.length,
+                        itemBuilder: (context, index) {
+                          final employee = employees[index];
+                          final initials = employee.firstName.isNotEmpty && employee.lastName.isNotEmpty
+                              ? '${employee.firstName[0]}${employee.lastName[0]}'
+                              : employee.firstName.isNotEmpty
+                                  ? employee.firstName[0]
+                                  : 'H';
+                          return Card(
+                            elevation: 5,
+                            margin: EdgeInsets.only(bottom: isMobile ? 10 : 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                          ),
-                          SizedBox(height: isMobile ? 6 : 8),
-                          Text(
-                            'Enter PIN to access',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: isMobile ? 12 : 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: isMobile ? 20 : 30),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(4, (index) {
-                          return Container(
-                            width: isMobile ? 16 : 20,
-                            height: isMobile ? 16 : 20,
-                            margin: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 10),
-                            decoration: BoxDecoration(
-                              color: index < pin.length
-                                  ? Colors.brown
-                                  : const Color(0xFFFFCCBC),
-                              shape: BoxShape.circle,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                radius: isMobile ? 24 : 30,
+                                backgroundColor: Colors.brown,
+                                child: Text(
+                                  initials.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 20 : 24,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                employee.fullName,
+                                style: TextStyle(
+                                  fontSize: isMobile ? 16 : 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                employee.email,
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: isMobile ? 13 : 14,
+                                ),
+                              ),
+                              onTap: () => _selectEmployee(employee),
+                              contentPadding: EdgeInsets.all(isMobile ? 12 : 20),
                             ),
                           );
-                        }),
-                      ),
-                      SizedBox(height: isMobile ? 20 : 30),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: isMobile ? 12 : 15,
-                          crossAxisSpacing: isMobile ? 12 : 15,
-                          childAspectRatio: 1,
-                        ),
-                        itemCount: 12,
-                        itemBuilder: (context, index) {
-                          if (index == 9) {
-                            return _buildPinButton(
-                              icon: Icons.backspace,
-                              onTap: _removeDigit,
-                              isMobile: isMobile,
-                            );
-                          } else if (index == 11) {
-                            return _buildPinButton(
-                              icon: Icons.check,
-                              onTap: () {
-                                if (pin.length == 4) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => HotelSafeScreen(onThemeChange: widget.onThemeChange),
-                                    ),
-                                  );
-                                }
-                              },
-                              isMobile: isMobile,
-                            );
-                          } else {
-                            final digit = index == 10 ? '0' : (index + 1).toString();
-                            return _buildPinButton(
-                              text: digit,
-                              onTap: () => _addDigit(digit),
-                              isMobile: isMobile,
-                            );
-                          }
                         },
                       ),
-                    ],
-                  ),
-                ),
               ),
             ),
           ],
@@ -214,28 +166,5 @@ class _HotelSafeLoginScreenState extends State<HotelSafeLoginScreen> {
     );
   }
 
-  Widget _buildPinButton({String? text, IconData? icon, required VoidCallback onTap, required bool isMobile}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF3E0),
-          borderRadius: BorderRadius.circular(35),
-          border: Border.all(color: const Color(0xFFFFCCBC)),
-        ),
-        child: Center(
-          child: text != null
-              ? Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: isMobile ? 20 : 24,
-                    fontWeight: FontWeight.w500,
-                  ),
-                )
-              : Icon(icon, size: isMobile ? 20 : 24, color: Colors.black),
-        ),
-      ),
-    );
-  }
 }
 

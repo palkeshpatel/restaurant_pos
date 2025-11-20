@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
+import '../models/employee.dart';
 import 'settings_screen.dart';
 import 'admin_employees_screen.dart';
 import 'admin_items_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  final User admin;
+  final Employee? employee;
+  final String roleName;
   final Function(ThemeData) onThemeChange;
 
-  const AdminDashboardScreen({super.key, required this.admin, required this.onThemeChange});
+  const AdminDashboardScreen({
+    super.key,
+    this.employee,
+    required this.roleName,
+    required this.onThemeChange,
+  });
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
@@ -95,7 +101,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           CircleAvatar(
                             backgroundColor: Colors.indigo,
                             child: Text(
-                              widget.admin.avatar,
+                              widget.employee != null
+                                  ? '${widget.employee!.firstName[0]}${widget.employee!.lastName[0]}'
+                                  : 'A',
                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -106,13 +114,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  widget.admin.name,
+                                  widget.employee != null
+                                      ? widget.employee!.fullName
+                                      : 'Admin',
                                   style: const TextStyle(fontWeight: FontWeight.w600),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  widget.admin.role,
+                                  widget.roleName,
                                   style: TextStyle(fontSize: 12, color: Colors.grey),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

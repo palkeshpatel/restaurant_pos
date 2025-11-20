@@ -1,30 +1,35 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
+import '../models/role.dart';
+import '../models/employee.dart';
 import 'pin_screen.dart';
 import 'settings_screen.dart';
 
 class UserListScreen extends StatefulWidget {
   final Function(ThemeData) onThemeChange;
+  final Role? role;
 
-  const UserListScreen({super.key, required this.onThemeChange});
+  const UserListScreen({super.key, required this.onThemeChange, this.role});
 
   @override
   State<UserListScreen> createState() => _UserListScreenState();
 }
 
 class _UserListScreenState extends State<UserListScreen> {
-  final List<User> users = [
-    User(name: 'John', role: 'Waiter', avatar: 'J'),
-    User(name: 'Sarah', role: 'Waiter', avatar: 'S'),
-    User(name: 'Mike', role: 'Waiter', avatar: 'M'),
-    User(name: 'Emma', role: 'Waiter', avatar: 'E'),
-  ];
+  List<Employee> get employees {
+    if (widget.role == null) return [];
+    return widget.role!.employees.where((e) => e.isActive).toList();
+  }
 
-  void _selectUser(User user) {
+  void _selectEmployee(Employee employee) {
+    // Create a simple user object for the pin screen
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PinScreen(user: user, onThemeChange: widget.onThemeChange),
+        builder: (context) => PinScreen(
+          employee: employee,
+          roleName: widget.role?.name ?? 'Waiter',
+          onThemeChange: widget.onThemeChange,
+        ),
       ),
     );
   }
@@ -72,7 +77,7 @@ class _UserListScreenState extends State<UserListScreen> {
                   SizedBox(width: isMobile ? 8 : 20),
                   Expanded(
                     child: Text(
-                      'Select User',
+                      widget.role?.name ?? 'Select User',
                       style: TextStyle(
                         fontSize: isMobile ? 18 : 24,
                         fontWeight: FontWeight.w600,
@@ -91,49 +96,64 @@ class _UserListScreenState extends State<UserListScreen> {
             Expanded(
               child: Padding(
                 padding: EdgeInsets.all(isMobile ? 12 : 20),
-                child: ListView.builder(
-                  itemCount: users.length,
-                  itemBuilder: (context, index) {
-                    final user = users[index];
-                    return Card(
-                      elevation: 5,
-                      margin: EdgeInsets.only(bottom: isMobile ? 10 : 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          radius: isMobile ? 24 : 30,
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          child: Text(
-                            user.avatar,
-                            style: TextStyle(
-                              fontSize: isMobile ? 20 : 24,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        title: Text(
-                          user.name,
+                child: employees.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No employees found',
                           style: TextStyle(
-                            fontSize: isMobile ? 16 : 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(
-                          user.role,
-                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
                             color: Colors.grey,
-                            fontSize: isMobile ? 13 : 14,
                           ),
                         ),
-                        onTap: () => _selectUser(user),
-                        contentPadding: EdgeInsets.all(isMobile ? 12 : 20),
+                      )
+                    : ListView.builder(
+                        itemCount: employees.length,
+                        itemBuilder: (context, index) {
+                          final employee = employees[index];
+                          final initials = employee.firstName.isNotEmpty && employee.lastName.isNotEmpty
+                              ? '${employee.firstName[0]}${employee.lastName[0]}'
+                              : employee.firstName.isNotEmpty
+                                  ? employee.firstName[0]
+                                  : 'E';
+                          return Card(
+                            elevation: 5,
+                            margin: EdgeInsets.only(bottom: isMobile ? 10 : 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                radius: isMobile ? 24 : 30,
+                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                child: Text(
+                                  initials.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 20 : 24,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                employee.fullName,
+                                style: TextStyle(
+                                  fontSize: isMobile ? 16 : 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                employee.email,
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: isMobile ? 13 : 14,
+                                ),
+                              ),
+                              onTap: () => _selectEmployee(employee),
+                              contentPadding: EdgeInsets.all(isMobile ? 12 : 20),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ),
           ],

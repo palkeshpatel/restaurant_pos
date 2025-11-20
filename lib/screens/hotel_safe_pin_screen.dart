@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../models/employee.dart';
-import 'admin_dashboard_screen.dart';
+import 'hotel_safe_screen.dart';
 import 'settings_screen.dart';
 
-class AdminPinScreen extends StatefulWidget {
+class HotelSafePinScreen extends StatefulWidget {
   final Employee? employee;
   final String roleName;
   final Function(ThemeData) onThemeChange;
 
-  const AdminPinScreen({
+  const HotelSafePinScreen({
     super.key,
     this.employee,
     required this.roleName,
@@ -16,10 +16,10 @@ class AdminPinScreen extends StatefulWidget {
   });
 
   @override
-  State<AdminPinScreen> createState() => _AdminPinScreenState();
+  State<HotelSafePinScreen> createState() => _HotelSafePinScreenState();
 }
 
-class _AdminPinScreenState extends State<AdminPinScreen> {
+class _HotelSafePinScreenState extends State<HotelSafePinScreen> {
   String pin = '';
 
   void _addDigit(String digit) {
@@ -32,11 +32,7 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => AdminDashboardScreen(
-                  employee: widget.employee,
-                  roleName: widget.roleName,
-                  onThemeChange: widget.onThemeChange,
-                ),
+              builder: (context) => HotelSafeScreen(onThemeChange: widget.onThemeChange),
             ),
           );
         });
@@ -95,7 +91,7 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                   SizedBox(width: isMobile ? 8 : 20),
                   Expanded(
                     child: Text(
-                      'Enter Admin PIN',
+                      'Enter PIN',
                       style: TextStyle(
                         fontSize: isMobile ? 18 : 24,
                         fontWeight: FontWeight.w600,
@@ -133,8 +129,14 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                     children: [
                       Column(
                         children: [
+                          Icon(
+                            Icons.security,
+                            size: isMobile ? 48 : 64,
+                            color: Colors.brown,
+                          ),
+                          SizedBox(height: isMobile ? 12 : 16),
                           Text(
-                            'Enter Admin PIN',
+                            'Hotel Safe',
                             style: TextStyle(
                               fontSize: isMobile ? 20 : 28,
                               fontWeight: FontWeight.w600,
@@ -143,8 +145,8 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                           SizedBox(height: isMobile ? 6 : 8),
                           Text(
                             widget.employee != null
-                              ? 'Welcome, ${widget.employee!.fullName}'
-                              : 'Welcome',
+                                ? 'Welcome, ${widget.employee!.fullName}'
+                                : 'Enter PIN to access',
                             style: TextStyle(
                               color: Colors.grey,
                               fontSize: isMobile ? 12 : 14,
@@ -162,7 +164,7 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                             margin: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 10),
                             decoration: BoxDecoration(
                               color: index < pin.length
-                                  ? Colors.indigo
+                                  ? Colors.brown
                                   : const Color(0xFFFFCCBC),
                               shape: BoxShape.circle,
                             ),
@@ -194,11 +196,7 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
                                   Navigator.pushReplacement(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => AdminDashboardScreen(
-                  employee: widget.employee,
-                  roleName: widget.roleName,
-                  onThemeChange: widget.onThemeChange,
-                ),
+                                      builder: (context) => HotelSafeScreen(onThemeChange: widget.onThemeChange),
                                     ),
                                   );
                                 }

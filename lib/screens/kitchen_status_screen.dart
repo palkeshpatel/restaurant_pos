@@ -337,50 +337,65 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ),
           ),
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(isMobile ? 10 : 15),
-              child: status.items.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            status.icon,
-                            size: isMobile ? 36 : 48,
-                            color: Colors.grey.withOpacity(0.3),
-                          ),
-                          SizedBox(height: isMobile ? 6 : 8),
-                          Text(
-                            'No items',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: isMobile ? 12 : 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ReorderableListView.builder(
-                      itemCount: status.items.length,
-                      onReorder: (oldIndex, newIndex) {
-                        if (newIndex > oldIndex) newIndex--;
-                        setState(() {
-                          final item = status.items.removeAt(oldIndex);
-                          status.items.insert(newIndex, item);
-                        });
-                      },
-                      proxyDecorator: (child, index, animation) {
-                        return Material(
-                          elevation: 8,
-                          color: Colors.transparent,
-                          child: child,
-                        );
-                      },
-                      itemBuilder: (context, index) {
-                        final item = status.items[index];
-                        return _buildDraggableOrderItem(item, status, isMobile: isMobile);
-                      },
+            child: DragTarget<OrderItem>(
+              onAccept: (draggedItem) {
+                // Check if item is from a different status
+                for (var otherStatus in statuses) {
+                  if (otherStatus != status && otherStatus.items.contains(draggedItem)) {
+                    _moveItem(draggedItem, otherStatus.name, status.name);
+                    break;
+                  }
+                }
+              },
+              builder: (context, candidateData, rejectedData) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: candidateData.isNotEmpty 
+                        ? status.color.withOpacity(0.1) 
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
                     ),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobile ? 10 : 15),
+                    child: status.items.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  status.icon,
+                                  size: isMobile ? 36 : 48,
+                                  color: Colors.grey.withOpacity(0.3),
+                                ),
+                                SizedBox(height: isMobile ? 6 : 8),
+                                Text(
+                                  candidateData.isNotEmpty ? 'Drop here' : 'No items',
+                                  style: TextStyle(
+                                    color: candidateData.isNotEmpty 
+                                        ? status.color 
+                                        : Colors.grey,
+                                    fontSize: isMobile ? 12 : 14,
+                                    fontWeight: candidateData.isNotEmpty 
+                                        ? FontWeight.w600 
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: status.items.length,
+                            itemBuilder: (context, index) {
+                              final item = status.items[index];
+                              return _buildDraggableOrderItem(item, status, isMobile: isMobile);
+                            },
+                          ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -393,38 +408,110 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     
-    return Card(
-      key: ValueKey('${item.name}_${item.addedTime}'),
-      elevation: 3,
-      margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
-      shape: RoundedRectangleBorder(
+    return Draggable<OrderItem>(
+      data: item,
+      feedback: Material(
+        elevation: 8,
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: currentStatus.color.withOpacity(0.3),
-          width: 2,
+        child: Container(
+          width: 300,
+          padding: EdgeInsets.all(isMobile ? 10 : 15),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: currentStatus.color, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(item.icon, color: currentStatus.color, size: 24),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Table 1 • ${minutes}m ${seconds}s',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            // Drag handle
-            Container(
-              width: isMobile ? 30 : 40,
-              decoration: BoxDecoration(
-                color: currentStatus.color.withOpacity(0.1),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(10),
-                  bottomLeft: Radius.circular(10),
-                ),
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.drag_handle,
-                  color: currentStatus.color,
-                  size: isMobile ? 18 : 24,
-                ),
+      childWhenDragging: Opacity(
+        opacity: 0.5,
+        child: Card(
+          elevation: 1,
+          margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Colors.grey.withOpacity(0.3),
+              width: 2,
+            ),
+          ),
+          child: Container(
+            height: 80,
+            child: Center(
+              child: Text(
+                'Dragging...',
+                style: TextStyle(color: Colors.grey),
               ),
             ),
+          ),
+        ),
+      ),
+      child: Card(
+        key: ValueKey('${item.name}_${item.addedTime}_${currentStatus.name}'),
+        elevation: 3,
+        margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: currentStatus.color.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // Drag handle
+              Container(
+                width: isMobile ? 30 : 40,
+                decoration: BoxDecoration(
+                  color: currentStatus.color.withOpacity(0.1),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10),
+                    bottomLeft: Radius.circular(10),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.drag_handle,
+                    color: currentStatus.color,
+                    size: isMobile ? 18 : 24,
+                  ),
+                ),
+              ),
             // Item content
             Expanded(
               child: Padding(
@@ -511,7 +598,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                 ),
               ),
             ),
-            // Status change buttons
+            // Status change button - move to other status
             Container(
               width: isMobile ? 40 : 50,
               decoration: BoxDecoration(
@@ -521,37 +608,36 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   bottomRight: Radius.circular(10),
                 ),
               ),
-              child: Column(
-                children: [
-                  if (statuses.indexOf(currentStatus) > 0)
-                    Expanded(
-                      child: IconButton(
-                        onPressed: () => _moveItem(
-                          item,
-                          currentStatus.name,
-                          statuses[statuses.indexOf(currentStatus) - 1].name,
-                        ),
-                        icon: Icon(Icons.arrow_upward, color: statuses[statuses.indexOf(currentStatus) - 1].color, size: isMobile ? 18 : 24),
-                        padding: EdgeInsets.all(isMobile ? 4 : 8),
+              child: Center(
+                child: Builder(
+                  builder: (context) {
+                    // Find the other status (if current is Hold, show Fire, and vice versa)
+                    final otherStatus = statuses.firstWhere(
+                      (s) => s.name != currentStatus.name,
+                      orElse: () => currentStatus,
+                    );
+                    
+                    return IconButton(
+                      onPressed: () => _moveItem(
+                        item,
+                        currentStatus.name,
+                        otherStatus.name,
                       ),
-                    ),
-                  if (statuses.indexOf(currentStatus) < statuses.length - 1)
-                    Expanded(
-                      child: IconButton(
-                        onPressed: () => _moveItem(
-                          item,
-                          currentStatus.name,
-                          statuses[statuses.indexOf(currentStatus) + 1].name,
-                        ),
-                        icon: Icon(Icons.arrow_downward, color: statuses[statuses.indexOf(currentStatus) + 1].color, size: isMobile ? 18 : 24),
-                        padding: EdgeInsets.all(isMobile ? 4 : 8),
+                      icon: Icon(
+                        Icons.swap_horiz,
+                        color: otherStatus.color,
+                        size: isMobile ? 20 : 24,
                       ),
-                    ),
-                ],
+                      tooltip: 'Move to ${otherStatus.name}',
+                      padding: EdgeInsets.all(isMobile ? 4 : 8),
+                    );
+                  },
+                ),
               ),
             ),
           ],
         ),
+      ),
       ),
     );
   }

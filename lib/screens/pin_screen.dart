@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
-import '../models/user.dart';
+import '../models/employee.dart';
 import 'floor_selection_screen.dart';
 import 'settings_screen.dart';
 
 class PinScreen extends StatefulWidget {
-  final User user;
+  final Employee? employee;
+  final String roleName;
   final Function(ThemeData) onThemeChange;
 
-  const PinScreen({super.key, required this.user, required this.onThemeChange});
+  const PinScreen({
+    super.key,
+    this.employee,
+    required this.roleName,
+    required this.onThemeChange,
+  });
 
   @override
   State<PinScreen> createState() => _PinScreenState();
@@ -119,7 +125,9 @@ class _PinScreenState extends State<PinScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Welcome, ${widget.user.name}',
+                          widget.employee != null
+                              ? 'Welcome, ${widget.employee!.fullName}'
+                              : 'Welcome',
                           style: const TextStyle(
                             color: Colors.grey,
                             fontSize: 14,

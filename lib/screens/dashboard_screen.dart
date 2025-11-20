@@ -4,11 +4,18 @@ import 'floor_selection_screen.dart';
 import 'settings_screen.dart';
 import 'admin_list_screen.dart';
 import 'hotel_safe_login_screen.dart';
+import '../models/login_response.dart';
+import '../models/role.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(ThemeData) onThemeChange;
+  final LoginResponse? loginResponse;
 
-  const DashboardScreen({super.key, required this.onThemeChange});
+  const DashboardScreen({
+    super.key,
+    required this.onThemeChange,
+    this.loginResponse,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -23,50 +30,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _navigateToUsers() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => UserListScreen(onThemeChange: widget.onThemeChange),
-      ),
-    );
-  }
-
-  void _navigateToFloors() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FloorSelectionScreen(onThemeChange: widget.onThemeChange),
-      ),
-    );
-  }
-
-  void _navigateToAdmins() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AdminListScreen(onThemeChange: widget.onThemeChange),
-      ),
-    );
-  }
-
-  void _navigateToHotelSafe() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HotelSafeLoginScreen(onThemeChange: widget.onThemeChange),
-      ),
-    );
-  }
-
-  void _navigateToOwner() {
-    // Navigate to owner screen (similar to admin for now)
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AdminListScreen(onThemeChange: widget.onThemeChange),
-      ),
-    );
+  void _navigateToRole(Role role) {
+    final roleName = role.name.toLowerCase();
+    
+    if (roleName.contains('waiter')) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UserListScreen(
+            onThemeChange: widget.onThemeChange,
+            role: role,
+          ),
+        ),
+      );
+    } else if (roleName.contains('hotel safe') || roleName.contains('safe')) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HotelSafeLoginScreen(
+            onThemeChange: widget.onThemeChange,
+            role: role,
+          ),
+        ),
+      );
+    } else if (roleName.contains('admin')) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AdminListScreen(
+            onThemeChange: widget.onThemeChange,
+            role: role,
+          ),
+        ),
+      );
+    } else if (roleName.contains('executive') || roleName.contains('manager') || roleName.contains('owner')) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AdminListScreen(
+            onThemeChange: widget.onThemeChange,
+            role: role,
+          ),
+        ),
+      );
+    } else {
+      // Default to user list screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UserListScreen(
+            onThemeChange: widget.onThemeChange,
+            role: role,
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -132,24 +150,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ? (screenWidth < 400 ? 3.5 : 3.2)
                       : 1.6,
                   ),
-                  itemCount: _dashboardItems.length,
+                  itemCount: _getDashboardItems().length,
                   itemBuilder: (context, index) {
+                    final item = _getDashboardItems()[index];
                     return _DashboardCard(
-                      item: _dashboardItems[index],
+                      item: item,
                       onTap: () {
-                        switch (_dashboardItems[index].route) {
-                          case 'staff_waiter':
-                            _navigateToUsers();
-                            break;
-                          case 'staff_safe':
-                            _navigateToHotelSafe();
-                            break;
-                          case 'admin':
-                            _navigateToAdmins();
-                            break;
-                          case 'owner':
-                            _navigateToOwner();
-                            break;
+                        if (item.role != null) {
+                          _navigateToRole(item.role!);
                         }
                       },
                       themeColor: Theme.of(context).colorScheme.primary,
@@ -165,36 +173,85 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  final List<DashboardItem> _dashboardItems = [
-    DashboardItem(
-      title: 'Waiter',
-      subtitle: 'Access for Waiters & Service Staff',
-      icon: Icons.people,
-      color: Colors.blue,
-      route: 'staff_waiter',
-    ),
-    DashboardItem(
-      title: 'Hotel Safe',
-      subtitle: 'Safe Access',
-      icon: Icons.security,
-      color: Colors.brown,
-      route: 'staff_safe',
-    ),
-    DashboardItem(
-      title: 'Administrator',
-      subtitle: 'Full System Configuration Access',
-      icon: Icons.admin_panel_settings,
-      color: Colors.indigo,
-      route: 'admin',
-    ),
-    DashboardItem(
-      title: 'Owner / Executive',
-      subtitle: 'Highest Level Financial & Reporting Access',
-      icon: Icons.business,
-      color: Colors.amber,
-      route: 'owner',
-    ),
-  ];
+  List<DashboardItem> _getDashboardItems() {
+    if (widget.loginResponse == null || widget.loginResponse!.roles.isEmpty) {
+      // Return default items if no login response
+      return [
+        DashboardItem(
+          title: 'Waiter',
+          subtitle: 'Access for Waiters & Service Staff',
+          icon: Icons.people,
+          color: Colors.blue,
+          route: 'staff_waiter',
+        ),
+        DashboardItem(
+          title: 'Hotel Safe',
+          subtitle: 'Safe Access',
+          icon: Icons.security,
+          color: Colors.brown,
+          route: 'staff_safe',
+        ),
+        DashboardItem(
+          title: 'Administrator',
+          subtitle: 'Full System Configuration Access',
+          icon: Icons.admin_panel_settings,
+          color: Colors.indigo,
+          route: 'admin',
+        ),
+        DashboardItem(
+          title: 'Executive/Manager',
+          subtitle: 'Highest Level Financial & Reporting Access',
+          icon: Icons.business,
+          color: Colors.amber,
+          route: 'owner',
+        ),
+      ];
+    }
+
+    // Map roles to dashboard items
+    return widget.loginResponse!.roles.map((role) {
+      final roleName = role.name.toLowerCase();
+      String title = role.name;
+      String subtitle = '';
+      IconData icon = Icons.person;
+      Color color = Colors.blue;
+
+      if (roleName.contains('waiter')) {
+        title = 'Waiter';
+        subtitle = 'Access for Waiters & Service Staff';
+        icon = Icons.people;
+        color = Colors.blue;
+      } else if (roleName.contains('hotel safe') || roleName.contains('safe')) {
+        title = 'Hotel Safe';
+        subtitle = 'Safe Access';
+        icon = Icons.security;
+        color = Colors.brown;
+      } else if (roleName.contains('admin')) {
+        title = 'Administrator';
+        subtitle = 'Full System Configuration Access';
+        icon = Icons.admin_panel_settings;
+        color = Colors.indigo;
+      } else if (roleName.contains('executive') || roleName.contains('manager')) {
+        title = 'Owner / Executive';
+        subtitle = 'Highest Level Financial & Reporting Access';
+        icon = Icons.business;
+        color = Colors.amber;
+      } else {
+        subtitle = 'Access for ${role.name} Staff';
+        icon = Icons.person;
+        color = Colors.grey;
+      }
+
+      return DashboardItem(
+        title: title,
+        subtitle: subtitle,
+        icon: icon,
+        color: color,
+        route: roleName,
+        role: role,
+      );
+    }).toList();
+  }
 }
 
 class DashboardItem {
@@ -203,6 +260,7 @@ class DashboardItem {
   final IconData icon;
   final Color color;
   final String route;
+  final Role? role;
 
   DashboardItem({
     required this.title,
@@ -210,6 +268,7 @@ class DashboardItem {
     required this.icon,
     required this.color,
     required this.route,
+    this.role,
   });
 }
 
