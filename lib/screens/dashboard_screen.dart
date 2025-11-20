@@ -199,7 +199,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           route: 'admin',
         ),
         DashboardItem(
-          title: 'Executive/Manager',
+          title: 'Owner / Executive',
           subtitle: 'Highest Level Financial & Reporting Access',
           icon: Icons.business,
           color: Colors.amber,
@@ -231,7 +231,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         subtitle = 'Full System Configuration Access';
         icon = Icons.admin_panel_settings;
         color = Colors.indigo;
-      } else if (roleName.contains('executive') || roleName.contains('manager')) {
+      } else if (roleName.contains('executive') || roleName.contains('manager') || roleName.contains('owner')) {
         title = 'Owner / Executive';
         subtitle = 'Highest Level Financial & Reporting Access';
         icon = Icons.business;

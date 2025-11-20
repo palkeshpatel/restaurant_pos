@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/employee.dart';
+import '../services/api_service.dart';
 import 'hotel_safe_screen.dart';
 import 'settings_screen.dart';
 
@@ -21,20 +22,65 @@ class HotelSafePinScreen extends StatefulWidget {
 
 class _HotelSafePinScreenState extends State<HotelSafePinScreen> {
   String pin = '';
+  bool _isLoading = false;
 
   void _addDigit(String digit) {
-    if (pin.length < 4) {
+    if (pin.length < 4 && !_isLoading) {
       setState(() {
         pin += digit;
       });
       if (pin.length == 4) {
-        Future.delayed(const Duration(milliseconds: 500), () {
+        _verifyPin();
+      }
+    }
+  }
+
+  Future<void> _verifyPin() async {
+    if (widget.employee == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Employee information is missing')),
+      );
+      setState(() {
+        pin = '';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await ApiService.verifyPin(widget.employee!.id, pin);
+
+      if (response.success && response.data != null) {
+        if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
               builder: (context) => HotelSafeScreen(onThemeChange: widget.onThemeChange),
             ),
           );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(response.message)),
+          );
+          setState(() {
+            pin = '';
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+        setState(() {
+          pin = '';
+          _isLoading = false;
         });
       }
     }
@@ -192,13 +238,8 @@ class _HotelSafePinScreenState extends State<HotelSafePinScreen> {
                             return _buildPinButton(
                               icon: Icons.check,
                               onTap: () {
-                                if (pin.length == 4) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => HotelSafeScreen(onThemeChange: widget.onThemeChange),
-                                    ),
-                                  );
+                                if (pin.length == 4 && !_isLoading) {
+                                  _verifyPin();
                                 }
                               },
                               isMobile: isMobile,

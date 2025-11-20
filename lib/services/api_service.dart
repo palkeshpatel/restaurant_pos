@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/api_response.dart';
 import '../models/login_response.dart';
+import '../models/pin_verification_response.dart';
 import 'storage_service.dart';
 
 class ApiService {
@@ -121,5 +122,43 @@ class ApiService {
 
   static Future<void> logout() async {
     await setToken(null);
+  }
+
+  static Future<ApiResponse<PinVerificationResponse>> verifyPin(int employeeId, String pin4) async {
+    try {
+      final url = Uri.parse('${await baseUrl}/api/pos/verify-pin');
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode({
+          'employee_id': employeeId,
+          'pin4': pin4,
+        }),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && jsonResponse['success'] == true) {
+        final pinVerificationResponse = PinVerificationResponse.fromJson(jsonResponse['data']);
+        await setToken(pinVerificationResponse.token);
+        return ApiResponse<PinVerificationResponse>(
+          success: true,
+          message: jsonResponse['message'] ?? 'PIN verified successfully',
+          data: pinVerificationResponse,
+        );
+      } else {
+        return ApiResponse<PinVerificationResponse>(
+          success: false,
+          message: jsonResponse['message'] ?? 'PIN verification failed',
+          data: null,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<PinVerificationResponse>(
+        success: false,
+        message: 'Error: ${e.toString()}',
+        data: null,
+      );
+    }
   }
 }
