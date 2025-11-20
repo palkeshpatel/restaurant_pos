@@ -32,38 +32,54 @@ class StatusCountWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 15),
-          _buildStatusCount('Hold', holdCount, Colors.orange),
+          _buildStatusCount('Hold', holdCount, Colors.orange.shade600, Icons.pause_circle_outline),
           const SizedBox(height: 12),
-          _buildStatusCount('In Kitchen', kitchenCount, Colors.red),
+          _buildStatusCount('In Kitchen', kitchenCount, Colors.blue.shade600, Icons.restaurant),
           const SizedBox(height: 12),
-          _buildStatusCount('Served', servedCount, Colors.green),
+          _buildStatusCount('Served', servedCount, Colors.green.shade600, Icons.check_circle_outline),
         ],
       ),
     );
   }
 
-  Widget _buildStatusCount(String label, int count, Color color) {
+  Widget _buildStatusCount(String label, int count, Color color, IconData icon) {
     return Card(
       elevation: 3,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(15),
-        child: Column(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              count.toString(),
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+            Icon(
+              icon,
+              color: color,
+              size: 24,
             ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+            const SizedBox(width: 12),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  count.toString(),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

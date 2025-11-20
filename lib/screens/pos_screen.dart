@@ -159,7 +159,7 @@ class _POSScreenState extends State<POSScreen> {
                 SizedBox(width: isMobile ? 8 : 20),
                 Expanded(
                   child: Text(
-                    'POS System',
+                    'Table 1: New Order',
                     style: TextStyle(
                       fontSize: isMobile ? 18 : 24,
                       fontWeight: FontWeight.w600,
@@ -170,7 +170,7 @@ class _POSScreenState extends State<POSScreen> {
                 IconButton(
                   onPressed: _showSettings,
                   icon: const Icon(Icons.settings),
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Colors.grey.shade700,
                   iconSize: isMobile ? 20 : 24,
                 ),
               ],
@@ -291,10 +291,11 @@ class _POSScreenState extends State<POSScreen> {
       ),
       child: Column(
         children: [
-          // Selected Table Info
+          // Selected Table Info - Combined Header
           Container(
-            padding: EdgeInsets.all(isMobile ? 12 : 20),
+            padding: EdgeInsets.all(isMobile ? 16 : 24),
             decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               border: Border(
                 bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
               ),
@@ -302,11 +303,11 @@ class _POSScreenState extends State<POSScreen> {
             child: Row(
               children: [
                 Icon(
-                  Icons.chair, 
-                  size: isMobile ? 24 : 28, 
+                  Icons.table_restaurant, 
+                  size: isMobile ? 28 : 32, 
                   color: Theme.of(context).colorScheme.primary
                 ),
-                SizedBox(width: isMobile ? 10 : 15),
+                SizedBox(width: isMobile ? 12 : 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,15 +316,18 @@ class _POSScreenState extends State<POSScreen> {
                       Text(
                         'Table 1',
                         style: TextStyle(
-                          fontSize: isMobile ? 16 : 18,
-                          fontWeight: FontWeight.w600,
+                          fontSize: isMobile ? 20 : 24,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
                         ),
                       ),
+                      SizedBox(height: 2),
                       Text(
                         'Ground Floor',
                         style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: isMobile ? 12 : 14,
+                          color: Colors.grey.shade700,
+                          fontSize: isMobile ? 14 : 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -358,23 +362,40 @@ class _POSScreenState extends State<POSScreen> {
                         ],
                       ),
                     )
-                  : ListView.builder(
+                  : ReorderableListView.builder(
                       itemCount: orderItems.length,
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (newIndex > oldIndex) newIndex--;
+                          final item = orderItems.removeAt(oldIndex);
+                          orderItems.insert(newIndex, item);
+                        });
+                      },
                       itemBuilder: (context, index) {
                         final item = orderItems[index];
                         final duration = DateTime.now().difference(item.addedTime);
                         final minutes = duration.inMinutes;
                         final seconds = duration.inSeconds % 60;
+                        final isCriticalTime = minutes >= 5;
+                        
                         return Card(
+                          key: ValueKey('${item.name}_$index'),
                           elevation: 3,
                           margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          color: Colors.lightBlue.shade50,
                           child: Padding(
                             padding: EdgeInsets.all(isMobile ? 10 : 12),
                             child: Row(
                               children: [
+                                Icon(
+                                  Icons.drag_handle,
+                                  color: Colors.grey.shade400,
+                                  size: isMobile ? 20 : 24,
+                                ),
+                                SizedBox(width: isMobile ? 8 : 12),
                                 Icon(item.icon, 
                                      color: Theme.of(context).colorScheme.primary,
                                      size: isMobile ? 24 : 32),
@@ -388,12 +409,12 @@ class _POSScreenState extends State<POSScreen> {
                                         item.name,
                                         style: TextStyle(
                                           fontSize: isMobile ? 14 : 16,
-                                          fontWeight: FontWeight.w500,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                      SizedBox(height: isMobile ? 2 : 4),
+                                      SizedBox(height: isMobile ? 4 : 6),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
@@ -402,20 +423,24 @@ class _POSScreenState extends State<POSScreen> {
                                             style: TextStyle(
                                               fontSize: isMobile ? 16 : 18,
                                               fontWeight: FontWeight.w600,
-                                              color: Theme.of(context).colorScheme.primary,
+                                              color: Colors.black87,
                                             ),
                                           ),
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              Icon(Icons.timer, size: isMobile ? 12 : 14, color: Colors.orange),
+                                              Icon(
+                                                Icons.timer,
+                                                size: isMobile ? 12 : 14,
+                                                color: isCriticalTime ? Colors.orange : Colors.grey.shade600,
+                                              ),
                                               SizedBox(width: isMobile ? 2 : 4),
                                               Text(
                                                 '${minutes}m ${seconds}s',
                                                 style: TextStyle(
                                                   fontSize: isMobile ? 10 : 12,
                                                   fontWeight: FontWeight.w500,
-                                                  color: Colors.orange,
+                                                  color: isCriticalTime ? Colors.orange : Colors.grey.shade600,
                                                 ),
                                               ),
                                             ],
@@ -424,6 +449,15 @@ class _POSScreenState extends State<POSScreen> {
                                       ),
                                     ],
                                   ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline, size: isMobile ? 18 : 20),
+                                  color: Colors.red.shade400,
+                                  onPressed: () {
+                                    setState(() {
+                                      orderItems.removeAt(index);
+                                    });
+                                  },
                                 ),
                               ],
                             ),
@@ -446,31 +480,63 @@ class _POSScreenState extends State<POSScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildTotalRow('Subtotal:', subtotal, isMobile: isMobile),
-                _buildTotalRow('Tax (10%):', tax, isMobile: isMobile),
-                const Divider(),
+                _buildTotalRow('Tax Rate (10%):', tax, isMobile: isMobile),
+                Divider(
+                  thickness: 2,
+                  color: Colors.grey.shade300,
+                ),
                 _buildTotalRow('Total:', total, isTotal: true, isMobile: isMobile),
                 SizedBox(height: isMobile ? 10 : 15),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: orderItems.isEmpty ? null : _sendToKitchen,
-                    icon: Icon(Icons.fireplace, size: isMobile ? 18 : 24),
-                    label: Text(
-                      'Send to Kitchen',
-                      style: TextStyle(fontSize: isMobile ? 14 : 16),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade300,
-                      disabledForegroundColor: Colors.grey.shade600,
-                      padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                Row(
+                  children: [
+                    if (!isMobile) ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: orderItems.isEmpty ? null : () {
+                            // Save as draft functionality
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Order saved as draft')),
+                            );
+                          },
+                          icon: Icon(Icons.save_outlined, size: isMobile ? 16 : 20),
+                          label: Text(
+                            'Save Draft',
+                            style: TextStyle(fontSize: isMobile ? 12 : 14),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey.shade700,
+                            padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                       ),
-                      elevation: 5,
+                      SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      flex: isMobile ? 1 : 2,
+                      child: ElevatedButton.icon(
+                        onPressed: orderItems.isEmpty ? null : _sendToKitchen,
+                        icon: Icon(Icons.arrow_forward, size: isMobile ? 18 : 24),
+                        label: Text(
+                          'Send to Kitchen',
+                          style: TextStyle(fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          disabledForegroundColor: Colors.grey.shade600,
+                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 5,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -512,50 +578,55 @@ class _POSScreenState extends State<POSScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            child: InkWell(
-              onTap: () => _addToOrder(item),
+            child: Material(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: EdgeInsets.all(isMobile ? 12 : 16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 8 : 12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        item.icon,
-                        size: isMobile ? 32 : 48,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    SizedBox(height: isMobile ? 8 : 12),
-                    Flexible(
-                      child: Text(
-                        item.name,
-                        style: TextStyle(
-                          fontSize: isMobile ? 12 : 14,
-                          fontWeight: FontWeight.w500,
+              child: InkWell(
+                onTap: () => _addToOrder(item),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: EdgeInsets.all(isMobile ? 12 : 16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(isMobile ? 6 : 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        child: Icon(
+                          item.icon,
+                          size: isMobile ? 28 : 36,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: isMobile ? 4 : 8),
-                    Text(
-                      '\$${item.price.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: isMobile ? 14 : 16,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.primary,
+                      SizedBox(height: isMobile ? 8 : 12),
+                      Flexible(
+                        child: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontSize: isMobile ? 12 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: isMobile ? 4 : 8),
+                      Text(
+                        '\$${item.price.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: isMobile ? 14 : 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -644,17 +715,18 @@ class _POSScreenState extends State<POSScreen> {
             child: Text(
               label,
               style: TextStyle(
-                fontSize: isTotal ? (isMobile ? 14 : 16) : (isMobile ? 12 : 14),
-                fontWeight: isTotal ? FontWeight.w600 : FontWeight.w400,
+                fontSize: isTotal ? (isMobile ? 16 : 18) : (isMobile ? 12 : 14),
+                fontWeight: isTotal ? FontWeight.w700 : FontWeight.w400,
+                color: Colors.black87,
               ),
             ),
           ),
           Text(
             '\$${amount.toStringAsFixed(2)}',
             style: TextStyle(
-              fontSize: isTotal ? (isMobile ? 18 : 20) : (isMobile ? 14 : 16),
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.primary,
+              fontSize: isTotal ? (isMobile ? 22 : 26) : (isMobile ? 14 : 16),
+              fontWeight: FontWeight.w700,
+              color: isTotal ? Theme.of(context).colorScheme.primary : Colors.black87,
             ),
           ),
         ],
