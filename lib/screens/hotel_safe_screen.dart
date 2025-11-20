@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/order_item.dart';
 import '../models/order_status.dart';
+import '../services/storage_service.dart';
+import '../services/api_service.dart';
 import 'settings_screen.dart';
+import 'dashboard_screen.dart';
 
 class HotelSafeScreen extends StatefulWidget {
   final Function(ThemeData) onThemeChange;
@@ -48,6 +51,45 @@ class _HotelSafeScreenState extends State<HotelSafeScreen> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _logout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await ApiService.logoutEmployee();
+      await StorageService.removeCurrentEmployee();
+      
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardScreen(onThemeChange: widget.onThemeChange),
+          ),
+          (route) => false,
+        );
+      }
+    }
   }
 
   void _showSettings() {
@@ -97,16 +139,25 @@ class _HotelSafeScreenState extends State<HotelSafeScreen> {
                       children: [
                         Icon(Icons.security, color: Colors.brown, size: isMobile ? 24 : 28),
                         SizedBox(width: isMobile ? 8 : 12),
-                        Text(
-                          'Hotel Safe - All Orders',
-                          style: TextStyle(
-                            fontSize: isMobile ? 18 : 24,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.primary,
+                        Expanded(
+                          child: Text(
+                            'Hotel Safe - All Orders',
+                            style: TextStyle(
+                              fontSize: isMobile ? 18 : 24,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                           ),
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout),
+                    color: Colors.red,
+                    iconSize: isMobile ? 20 : 24,
+                    tooltip: 'Logout',
                   ),
                   IconButton(
                     onPressed: _showSettings,

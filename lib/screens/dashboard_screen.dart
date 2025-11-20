@@ -6,6 +6,8 @@ import 'admin_list_screen.dart';
 import 'hotel_safe_login_screen.dart';
 import '../models/login_response.dart';
 import '../models/role.dart';
+import '../models/current_employee.dart';
+import '../services/storage_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(ThemeData) onThemeChange;
@@ -22,6 +24,28 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  CurrentEmployee? _currentEmployee;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentEmployee();
+  }
+
+  Future<void> _loadCurrentEmployee() async {
+    final currentEmployee = await StorageService.getCurrentEmployee();
+    if (mounted) {
+      setState(() {
+        _currentEmployee = currentEmployee;
+      });
+    }
+  }
+
+  bool _isRoleActive(Role role) {
+    if (_currentEmployee == null) return false;
+    // Check if any employee in this role matches the logged-in employee
+    return role.employees.any((emp) => emp.id == _currentEmployee!.employee.id);
+  }
   void _showSettings() {
     showModalBottomSheet(
       context: context,
@@ -153,6 +177,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   itemCount: _getDashboardItems().length,
                   itemBuilder: (context, index) {
                     final item = _getDashboardItems()[index];
+                    final isActive = item.role != null && _isRoleActive(item.role!);
+                    final hasAnyLoggedIn = _currentEmployee != null;
                     return _DashboardCard(
                       item: item,
                       onTap: () {
@@ -162,6 +188,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       },
                       themeColor: Theme.of(context).colorScheme.primary,
                       isMobile: isMobile,
+                      isActive: isActive,
+                      hasAnyLoggedIn: hasAnyLoggedIn,
                     );
                   },
                 ),
@@ -277,12 +305,16 @@ class _DashboardCard extends StatelessWidget {
   final VoidCallback onTap;
   final Color themeColor;
   final bool isMobile;
+  final bool isActive;
+  final bool hasAnyLoggedIn;
 
   const _DashboardCard({
     required this.item,
     required this.onTap,
     required this.themeColor,
     required this.isMobile,
+    this.isActive = false,
+    this.hasAnyLoggedIn = false,
   });
 
   @override
@@ -309,11 +341,27 @@ class _DashboardCard extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                item.color.withOpacity(0.1),
-                item.color.withOpacity(0.05),
-              ],
+              colors: hasAnyLoggedIn
+                  ? [
+                      if (isActive)
+                        Colors.green.withOpacity(0.1)
+                      else
+                        item.color.withOpacity(0.05),
+                      if (isActive)
+                        Colors.green.withOpacity(0.05)
+                      else
+                        item.color.withOpacity(0.02),
+                    ]
+                  : [
+                      item.color.withOpacity(0.1),
+                      item.color.withOpacity(0.05),
+                    ],
             ),
+            border: hasAnyLoggedIn && isActive
+                ? Border.all(color: Colors.green, width: 2)
+                : hasAnyLoggedIn && !isActive
+                    ? Border.all(color: Colors.grey.shade300, width: 1)
+                    : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
@@ -338,16 +386,44 @@ class _DashboardCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: themeColor,
-                      ),
-                      textAlign: TextAlign.left,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            style: TextStyle(
+                              fontSize: titleFontSize,
+                              fontWeight: FontWeight.w600,
+                              color: themeColor,
+                            ),
+                            textAlign: TextAlign.left,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (hasAnyLoggedIn)
+                          Container(
+                            padding: EdgeInsets.all(isMobile ? 4 : 6),
+                            decoration: BoxDecoration(
+                              color: isActive ? Colors.green : Colors.grey.shade400,
+                              shape: BoxShape.circle,
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.green.withOpacity(0.4),
+                                        blurRadius: 4,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Icon(
+                              isActive ? Icons.check_circle : Icons.lock,
+                              size: isMobile ? 16 : 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                      ],
                     ),
                     SizedBox(height: isMobile ? 4 : 6),
                     Text(

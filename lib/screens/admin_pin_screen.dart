@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/employee.dart';
+import '../models/current_employee.dart';
 import '../services/api_service.dart';
+import '../services/storage_service.dart';
 import 'admin_dashboard_screen.dart';
 import 'settings_screen.dart';
 
@@ -23,6 +25,33 @@ class AdminPinScreen extends StatefulWidget {
 class _AdminPinScreenState extends State<AdminPinScreen> {
   String pin = '';
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingLogin();
+  }
+
+  Future<void> _checkExistingLogin() async {
+    final currentEmployee = await StorageService.getCurrentEmployee();
+    if (currentEmployee != null && 
+        widget.employee != null && 
+        currentEmployee.employee.id == widget.employee!.id) {
+      // Same user already logged in, navigate directly
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminDashboardScreen(
+              employee: widget.employee,
+              roleName: widget.roleName,
+              onThemeChange: widget.onThemeChange,
+            ),
+          ),
+        );
+      }
+    }
+  }
 
   void _addDigit(String digit) {
     if (pin.length < 4 && !_isLoading) {
@@ -54,6 +83,15 @@ class _AdminPinScreenState extends State<AdminPinScreen> {
       final response = await ApiService.verifyPin(widget.employee!.id, pin);
 
       if (response.success && response.data != null) {
+        // Save current employee
+        final currentEmployee = CurrentEmployee(
+          employee: response.data!.employee,
+          token: response.data!.token,
+          loginTime: DateTime.now(),
+          roleName: widget.roleName,
+        );
+        await StorageService.saveCurrentEmployee(currentEmployee);
+
         if (mounted) {
           Navigator.pushReplacement(
             context,

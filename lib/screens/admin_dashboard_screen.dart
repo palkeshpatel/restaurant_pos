@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/employee.dart';
+import '../services/storage_service.dart';
+import '../services/api_service.dart';
 import '../widgets/avatar_widget.dart';
 import 'settings_screen.dart';
 import 'admin_employees_screen.dart';
 import 'admin_items_screen.dart';
+import 'dashboard_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   final Employee? employee;
@@ -34,6 +37,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int liveOrders = 12;
   int totalRevenue = 1250;
   int activeTables = 8;
+
+  Future<void> _logout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await ApiService.logoutEmployee();
+      await StorageService.removeCurrentEmployee();
+      
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardScreen(onThemeChange: widget.onThemeChange),
+          ),
+          (route) => false,
+        );
+      }
+    }
+  }
 
   void _showSettings() {
     showModalBottomSheet(
@@ -242,6 +284,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               );
                             }).toList(),
                           ),
+                        IconButton(
+                          onPressed: _logout,
+                          icon: const Icon(Icons.logout),
+                          color: Colors.red,
+                          iconSize: isMobile ? 20 : 24,
+                          tooltip: 'Logout',
+                        ),
                         IconButton(
                           onPressed: _showSettings,
                           icon: const Icon(Icons.settings),

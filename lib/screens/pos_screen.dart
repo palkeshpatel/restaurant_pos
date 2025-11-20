@@ -1,44 +1,73 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../models/category.dart';
 import '../models/menu_item.dart';
+import '../models/menu_category.dart';
 import '../models/order_item.dart';
 import '../models/customer.dart';
+import '../models/floor.dart';
+import '../models/table.dart' as table_model;
+import '../services/api_service.dart';
 import 'kitchen_status_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/status_count_widget.dart';
 
 class POSScreen extends StatefulWidget {
   final Function(ThemeData) onThemeChange;
+  final Floor? floor;
+  final table_model.TableModel? table;
 
-  const POSScreen({super.key, required this.onThemeChange});
+  const POSScreen({
+    super.key,
+    required this.onThemeChange,
+    this.floor,
+    this.table,
+  });
 
   @override
   State<POSScreen> createState() => _POSScreenState();
 }
 
 class _POSScreenState extends State<POSScreen> {
-  late List<Category> categories;
   Timer? _timer;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  late final DateTime _orderStartTime;
+  bool _isMenuLoading = true;
+  String? _menuError;
+  List<MenuCategory> _allCategories = [];
+  MenuCategory? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    categories = [
-      Category(name: 'Appetizers', icon: Icons.restaurant, isActive: true),
-      Category(name: 'Main Courses', icon: Icons.restaurant_menu),
-      Category(name: 'Desserts', icon: Icons.icecream),
-      Category(name: 'Drinks', icon: Icons.local_drink),
-      Category(name: 'Specials', icon: Icons.star),
-    ];
+    _orderStartTime = DateTime.now();
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.toLowerCase();
       });
     });
     _startTimer();
+    _loadMenu();
+  }
+
+  String _formatOrderStart(DateTime dateTime) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final date =
+        '${two(dateTime.day)}-${two(dateTime.month)}-${dateTime.year} ${two(dateTime.hour)}:${two(dateTime.minute)}:${two(dateTime.second)}';
+    return date;
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'available':
+        return Colors.blueGrey;
+      case 'occupied':
+        return Colors.green;
+      case 'reserved':
+        return Colors.orange;
+      default:
+        return Colors.blueGrey;
+    }
   }
 
   @override
@@ -56,15 +85,45 @@ class _POSScreenState extends State<POSScreen> {
     });
   }
 
+  Future<void> _loadMenu() async {
+    setState(() {
+      _isMenuLoading = true;
+      _menuError = null;
+    });
 
-  final List<MenuItem> menuItems = [
-    MenuItem(name: 'Bruschetta', price: 6.99, icon: Icons.bakery_dining, category: 'Appetizers'),
-    MenuItem(name: 'Garlic Bread', price: 4.99, icon: Icons.bakery_dining, category: 'Appetizers'),
-    MenuItem(name: 'Mozzarella Sticks', price: 7.99, icon: Icons.lunch_dining, category: 'Appetizers'),
-    MenuItem(name: 'Chicken Wings', price: 9.99, icon: Icons.kebab_dining, category: 'Appetizers'),
-    MenuItem(name: 'Nachos', price: 8.99, icon: Icons.dining, category: 'Appetizers'),
-    MenuItem(name: 'Spring Rolls', price: 6.99, icon: Icons.egg, category: 'Appetizers'),
-  ];
+    final response = await ApiService.getMenu();
+
+    if (!mounted) return;
+
+    if (response.success && response.data != null && response.data!.menus.isNotEmpty) {
+      final flattenedCategories = _flattenCategories(
+        response.data!.menus.expand((menu) => menu.categories).toList(),
+      );
+
+      setState(() {
+        _allCategories = flattenedCategories;
+        _selectedCategory = flattenedCategories.isNotEmpty ? flattenedCategories.first : null;
+        _isMenuLoading = false;
+      });
+    } else {
+      setState(() {
+        _menuError = response.message;
+        _isMenuLoading = false;
+      });
+    }
+  }
+
+  List<MenuCategory> _flattenCategories(List<MenuCategory> categories) {
+    final List<MenuCategory> result = [];
+    for (final category in categories) {
+      if (category.menuItems.isNotEmpty) {
+        result.add(category);
+      }
+      result.addAll(_flattenCategories(category.children));
+    }
+    return result;
+  }
+
 
   // Multiple customers
   List<Customer> customers = [
@@ -80,7 +139,6 @@ class _POSScreenState extends State<POSScreen> {
   // Legacy single order items (for backward compatibility)
   List<OrderItem> get orderItems => selectedCustomer.items;
   
-  String selectedCategory = 'Appetizers';
   int holdCount = 2;
   int fireCount = 1;
 
@@ -91,17 +149,9 @@ class _POSScreenState extends State<POSScreen> {
   // Get total for all customers combined
   double get allCustomersTotal => customers.fold(0.0, (sum, cust) => sum + cust.total);
 
-  void _selectCategory(String category) {
+  void _selectCategory(MenuCategory category) {
     setState(() {
-      selectedCategory = category;
-      // Update active state
-      categories = categories.map((cat) {
-        return Category(
-          name: cat.name,
-          icon: cat.icon,
-          isActive: cat.name == category,
-        );
-      }).toList();
+      _selectedCategory = category;
     });
   }
 
@@ -122,7 +172,7 @@ class _POSScreenState extends State<POSScreen> {
         customers[targetIndex].items.add(OrderItem(
           name: item.name,
           price: item.price,
-          icon: item.icon,
+          icon: Icons.restaurant_menu,
           addedTime: DateTime.now(),
           quantity: 1,
         ));
@@ -174,6 +224,7 @@ class _POSScreenState extends State<POSScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
     final isTablet = screenWidth >= 768 && screenWidth < 1024;
+    final tokenLabel = widget.table?.orderTicketTitle ?? widget.table?.orderTicketId;
     
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -205,13 +256,27 @@ class _POSScreenState extends State<POSScreen> {
                 ),
                 SizedBox(width: isMobile ? 8 : 20),
                 Expanded(
-                  child: Text(
-                    'Table 1: New Order',
-                    style: TextStyle(
-                      fontSize: isMobile ? 18 : 24,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${widget.table?.name ?? 'Table'}: ${widget.table?.orderTicketTitle ?? 'New Order'}',
+                        style: TextStyle(
+                          fontSize: isMobile ? 18 : 24,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Order start on ${_formatOrderStart(_orderStartTime)}${tokenLabel != null ? '  #Order/Token: $tokenLabel' : ''}',
+                        style: TextStyle(
+                          fontSize: isMobile ? 11 : 13,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
@@ -250,7 +315,7 @@ class _POSScreenState extends State<POSScreen> {
                             child: Row(
                               children: [
                                 Text(
-                                  selectedCategory,
+                                  _selectedCategory?.name ?? 'Menu',
                                   style: TextStyle(
                                     fontSize: isMobile ? 18 : 22,
                                     fontWeight: FontWeight.w600,
@@ -333,33 +398,41 @@ class _POSScreenState extends State<POSScreen> {
                       height: 60,
                       color: Theme.of(context).colorScheme.surface,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final category = categories[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: FilterChip(
-                              selected: category.isActive,
-                              label: Text(category.name),
-                              avatar: Icon(
-                                category.icon,
-                                size: 18,
-                                color: category.isActive 
-                                    ? Colors.white 
-                                    : Theme.of(context).colorScheme.primary,
+                      child: _isMenuLoading
+                          ? Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
-                              selectedColor: Theme.of(context).colorScheme.primary,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  _selectCategory(category.name);
-                                }
+                            )
+                          : ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _allCategories.length,
+                              itemBuilder: (context, index) {
+                                final category = _allCategories[index];
+                                final isActive = _selectedCategory?.id == category.id;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  child: FilterChip(
+                                    selected: isActive,
+                                    label: Text(category.name),
+                                    avatar: Icon(
+                                      Icons.restaurant_menu,
+                                      size: 18,
+                                      color: isActive
+                                          ? Colors.white
+                                          : Theme.of(context).colorScheme.primary,
+                                    ),
+                                    selectedColor: Theme.of(context).colorScheme.primary,
+                                    onSelected: (selected) {
+                                      if (selected) {
+                                        _selectCategory(category);
+                                      }
+                                    },
+                                  ),
+                                );
                               },
                             ),
-                          );
-                        },
-                      ),
                     ),
                     Expanded(
                       child: _buildMenuSection(),
@@ -380,6 +453,7 @@ class _POSScreenState extends State<POSScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
     
+    final tokenLabel = widget.table?.orderTicketTitle ?? widget.table?.orderTicketId;
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -404,28 +478,69 @@ class _POSScreenState extends State<POSScreen> {
             ),
             child: Row(
               children: [
-                Text(
-                  'Table 1',
-                  style: TextStyle(
-                    fontSize: isMobile ? 20 : 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'Occupied',
-                    style: TextStyle(
-                      fontSize: isMobile ? 11 : 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            widget.table?.name ?? 'Table',
+                            style: TextStyle(
+                              fontSize: isMobile ? 20 : 24,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(widget.table?.status ?? 'new'),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              (widget.table?.status ?? 'new').toUpperCase(),
+                              style: TextStyle(
+                                fontSize: isMobile ? 11 : 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (tokenLabel != null) ...[
+                        SizedBox(height: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Text(
+                            tokenLabel,
+                            style: TextStyle(
+                              fontSize: isMobile ? 11 : 12,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: 6),
+                      Text(
+                        'Order start on ${_formatOrderStart(_orderStartTime)}',
+                        style: TextStyle(
+                          fontSize: isMobile ? 11 : 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -735,16 +850,66 @@ class _POSScreenState extends State<POSScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
     final isTablet = screenWidth >= 768 && screenWidth < 1024;
-    
-    // Filter menu items by selected category and search query
-    var filteredItems = menuItems.where((item) => item.category == selectedCategory).toList();
-    
-    if (_searchQuery.isNotEmpty) {
-      filteredItems = filteredItems.where((item) => 
-        item.name.toLowerCase().contains(_searchQuery)
-      ).toList();
+
+    if (_isMenuLoading) {
+      return Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      );
     }
-    
+
+    if (_menuError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, color: Colors.red, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              _menuError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _loadMenu,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_selectedCategory == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.restaurant_menu,
+              size: 64,
+              color: Colors.grey.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No menu categories available',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    var filteredItems = List<MenuItem>.from(_selectedCategory!.menuItems);
+
+    if (_searchQuery.isNotEmpty) {
+      filteredItems = filteredItems
+          .where((item) => item.name.toLowerCase().contains(_searchQuery))
+          .toList();
+    }
+
     int crossAxisCount;
     if (isMobile) {
       crossAxisCount = 2;
@@ -753,7 +918,7 @@ class _POSScreenState extends State<POSScreen> {
     } else {
       crossAxisCount = 4;
     }
-    
+
     return Container(
       color: const Color(0xFFFFF3E0),
       padding: EdgeInsets.all(isMobile ? 12 : 20),
@@ -769,8 +934,8 @@ class _POSScreenState extends State<POSScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No items in this category',
-                    style: TextStyle(
+                    'No items in ${_selectedCategory!.name}',
+                    style: const TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
                     ),
@@ -788,167 +953,166 @@ class _POSScreenState extends State<POSScreen> {
               itemCount: filteredItems.length,
               itemBuilder: (context, index) {
                 final item = filteredItems[index];
-          return Draggable<MenuItem>(
-            data: item,
-            feedback: Material(
-              elevation: 8,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: 120,
-                height: 140,
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 36,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      item.name,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '\$${item.price.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            childWhenDragging: Opacity(
-              opacity: 0.5,
-              child: Card(
-                elevation: 5,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                color: Colors.grey.shade200,
-                child: Padding(
-                  padding: EdgeInsets.all(isMobile ? 12 : 16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(isMobile ? 6 : 10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          size: isMobile ? 28 : 36,
-                          color: Colors.grey,
+                return Draggable<MenuItem>(
+                  data: item,
+                  feedback: Material(
+                    elevation: 8,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: 120,
+                      height: 140,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 2,
                         ),
                       ),
-                      SizedBox(height: isMobile ? 8 : 12),
-                      Flexible(
-                        child: Text(
-                          item.name,
-                          style: TextStyle(
-                            fontSize: isMobile ? 12 : 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      SizedBox(height: isMobile ? 4 : 8),
-                      Text(
-                        '\$${item.price.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontSize: isMobile ? 14 : 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            child: Card(
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  onTap: () => _addToOrder(item),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: EdgeInsets.all(isMobile ? 12 : 16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(isMobile ? 6 : 10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: isMobile ? 28 : 36,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        SizedBox(height: isMobile ? 8 : 12),
-                        Flexible(
-                          child: Text(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildMenuItemVisual(item, 50, context),
+                          const SizedBox(height: 8),
+                          Text(
                             item.name,
-                            style: TextStyle(
-                              fontSize: isMobile ? 12 : 14,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        SizedBox(height: isMobile ? 4 : 8),
-                        Text(
-                          '\$${item.price.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: isMobile ? 14 : 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                          const SizedBox(height: 4),
+                          Text(
+                            '₹${item.price.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
+                  childWhenDragging: Opacity(
+                    opacity: 0.5,
+                    child: Card(
+                      elevation: 5,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      color: Colors.grey.shade200,
+                      child: Padding(
+                        padding: EdgeInsets.all(isMobile ? 12 : 16),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(isMobile ? 6 : 10),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.restaurant_menu,
+                                size: isMobile ? 28 : 36,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            SizedBox(height: isMobile ? 8 : 12),
+                            Flexible(
+                              child: Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: isMobile ? 12 : 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            SizedBox(height: isMobile ? 4 : 8),
+                            Text(
+                              '₹${item.price.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  child: Card(
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        onTap: () => _addToOrder(item),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Padding(
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(isMobile ? 6 : 10),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.restaurant_menu,
+                                  size: isMobile ? 28 : 36,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                              SizedBox(height: isMobile ? 8 : 12),
+                              Flexible(
+                                child: Text(
+                                  item.name,
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 12 : 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.black87,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              SizedBox(height: isMobile ? 4 : 8),
+                              Text(
+                                '₹${item.price.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 
@@ -989,47 +1153,54 @@ class _POSScreenState extends State<POSScreen> {
           ),
           // Categories List
           Expanded(
-            child: ListView.builder(
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return InkWell(
-                  onTap: () => _selectCategory(category.name),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: category.isActive ? Theme.of(context).colorScheme.primary : null,
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.grey.withOpacity(0.2),
-                          width: 0.5,
-                        ),
-                      ),
+            child: _isMenuLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          category.icon,
-                          color: category.isActive ? Colors.white : Theme.of(context).colorScheme.primary,
-                          size: 22,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            category.name,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: category.isActive ? FontWeight.w600 : FontWeight.w400,
-                              color: category.isActive ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                  )
+                : ListView.builder(
+                    itemCount: _allCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = _allCategories[index];
+                      final isActive = _selectedCategory?.id == category.id;
+                      return InkWell(
+                        onTap: () => _selectCategory(category),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isActive ? Theme.of(context).colorScheme.primary : null,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.grey.withOpacity(0.2),
+                                width: 0.5,
+                              ),
                             ),
                           ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.restaurant_menu,
+                                color: isActive ? Colors.white : Theme.of(context).colorScheme.primary,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  category.name,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                                    color: isActive ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
           // Status Counts
           StatusCountWidget(
@@ -1038,6 +1209,31 @@ class _POSScreenState extends State<POSScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMenuItemVisual(MenuItem item, double size, BuildContext context) {
+    if (item.image != null && item.image!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          item.image!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Icon(
+            Icons.restaurant_menu,
+            size: size,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      );
+    }
+
+    return Icon(
+      Icons.restaurant_menu,
+      size: size,
+      color: Theme.of(context).colorScheme.primary,
     );
   }
 

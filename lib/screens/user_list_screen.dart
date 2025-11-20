@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/role.dart';
 import '../models/employee.dart';
+import '../models/current_employee.dart';
+import '../services/storage_service.dart';
+import '../services/api_service.dart';
 import '../widgets/avatar_widget.dart';
 import 'pin_screen.dart';
+import 'floor_selection_screen.dart';
 import 'settings_screen.dart';
 
 class UserListScreen extends StatefulWidget {
@@ -16,23 +20,115 @@ class UserListScreen extends StatefulWidget {
 }
 
 class _UserListScreenState extends State<UserListScreen> {
+  CurrentEmployee? _currentEmployee;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentEmployee();
+  }
+
+  Future<void> _loadCurrentEmployee() async {
+    final currentEmployee = await StorageService.getCurrentEmployee();
+    setState(() {
+      _currentEmployee = currentEmployee;
+    });
+  }
+
   List<Employee> get employees {
     if (widget.role == null) return [];
     return widget.role!.employees.where((e) => e.isActive).toList();
   }
 
-  void _selectEmployee(Employee employee) {
-    // Create a simple user object for the pin screen
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PinScreen(
-          employee: employee,
-          roleName: widget.role?.name ?? 'Waiter',
-          onThemeChange: widget.onThemeChange,
+  bool _isEmployeeLoggedIn(Employee employee) {
+    return _currentEmployee != null && _currentEmployee!.employee.id == employee.id;
+  }
+
+  Future<void> _selectEmployee(Employee employee) async {
+    // Check if this employee is already logged in
+    if (_currentEmployee != null && _currentEmployee!.employee.id == employee.id) {
+      // Same user already logged in, go directly to floor selection
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FloorSelectionScreen(
+              onThemeChange: widget.onThemeChange,
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    
+    // Check if there's a different logged-in employee
+    if (_currentEmployee != null && _currentEmployee!.employee.id != employee.id) {
+      // Show popup to logout previous user
+      final shouldLogout = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('User Already Logged In'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${_currentEmployee!.employee.fullName} is currently logged in.'),
+              const SizedBox(height: 8),
+              const Text('Do you want to logout and login as this user?'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Logout & Continue'),
+            ),
+          ],
         ),
-      ),
-    );
+      );
+
+      if (shouldLogout == true) {
+        // Logout previous user
+        await ApiService.logoutEmployee();
+        await StorageService.removeCurrentEmployee();
+        setState(() {
+          _currentEmployee = null;
+        });
+        
+        // Navigate to PIN screen for new employee
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PinScreen(
+                employee: employee,
+                roleName: widget.role?.name ?? 'Waiter',
+                onThemeChange: widget.onThemeChange,
+              ),
+            ),
+          );
+        }
+      }
+    } else {
+      // No user logged in, go to PIN screen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PinScreen(
+            employee: employee,
+            roleName: widget.role?.name ?? 'Waiter',
+            onThemeChange: widget.onThemeChange,
+          ),
+        ),
+      );
+    }
   }
 
   void _showSettings() {
@@ -118,18 +214,76 @@ class _UserListScreenState extends State<UserListScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: ListTile(
-                              leading: AvatarWidget(
-                                imageUrl: employee.avatar,
-                                initials: employee.initials,
-                                radius: isMobile ? 24 : 30,
-                                backgroundColor: Theme.of(context).colorScheme.primary,
+                              leading: Stack(
+                                children: [
+                                  AvatarWidget(
+                                    imageUrl: employee.avatar,
+                                    initials: employee.initials,
+                                    radius: isMobile ? 24 : 30,
+                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                  ),
+                                  if (_isEmployeeLoggedIn(employee))
+                                    Positioned(
+                                      right: 0,
+                                      bottom: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 2),
+                                        ),
+                                        child: Icon(
+                                          Icons.lock_open,
+                                          size: isMobile ? 12 : 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                              title: Text(
-                                employee.fullName,
-                                style: TextStyle(
-                                  fontSize: isMobile ? 16 : 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      employee.fullName,
+                                      style: TextStyle(
+                                        fontSize: isMobile ? 16 : 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_isEmployeeLoggedIn(employee))
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: isMobile ? 6 : 8,
+                                        vertical: isMobile ? 2 : 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.lock_open,
+                                            size: isMobile ? 12 : 14,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(width: isMobile ? 4 : 6),
+                                          Text(
+                                            'Logged In',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: isMobile ? 10 : 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
                               ),
                               subtitle: Text(
                                 employee.email,
