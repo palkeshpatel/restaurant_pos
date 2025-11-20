@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 
 class StatusCountWidget extends StatelessWidget {
   final int holdCount;
-  final int kitchenCount;
-  final int servedCount;
+  final int fireCount;
 
   const StatusCountWidget({
     super.key,
     required this.holdCount,
-    required this.kitchenCount,
-    required this.servedCount,
+    required this.fireCount,
   });
 
   @override
@@ -34,9 +32,7 @@ class StatusCountWidget extends StatelessWidget {
           const SizedBox(height: 15),
           _buildStatusCount('Hold', holdCount, Colors.orange.shade600, Icons.pause_circle_outline),
           const SizedBox(height: 12),
-          _buildStatusCount('In Kitchen', kitchenCount, Colors.blue.shade600, Icons.restaurant),
-          const SizedBox(height: 12),
-          _buildStatusCount('Served', servedCount, Colors.green.shade600, Icons.check_circle_outline),
+          _buildStatusCount('Fire', fireCount, Colors.red.shade600, Icons.local_fire_department),
         ],
       ),
     );

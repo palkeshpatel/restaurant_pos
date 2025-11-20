@@ -37,18 +37,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ],
       ),
       OrderStatus(
-        name: 'In Kitchen',
-        icon: Icons.kitchen,
+        name: 'Fire',
+        icon: Icons.local_fire_department,
         color: Colors.red,
         items: [
           OrderItem(name: 'Margherita Pizza', price: 12.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 15))),
         ],
-      ),
-      OrderStatus(
-        name: 'Served',
-        icon: Icons.check_circle,
-        color: Colors.green,
-        items: [],
       ),
     ];
   }

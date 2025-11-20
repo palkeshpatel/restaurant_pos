@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../models/menu_item.dart';
 import '../models/order_item.dart';
+import '../models/customer.dart';
 import 'kitchen_status_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/status_count_widget.dart';
@@ -19,6 +20,8 @@ class POSScreen extends StatefulWidget {
 class _POSScreenState extends State<POSScreen> {
   late List<Category> categories;
   Timer? _timer;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -30,7 +33,19 @@ class _POSScreenState extends State<POSScreen> {
       Category(name: 'Drinks', icon: Icons.local_drink),
       Category(name: 'Specials', icon: Icons.star),
     ];
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
     _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _timer?.cancel();
+    super.dispose();
   }
 
   void _startTimer() {
@@ -41,11 +56,6 @@ class _POSScreenState extends State<POSScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
 
   final List<MenuItem> menuItems = [
     MenuItem(name: 'Bruschetta', price: 6.99, icon: Icons.bakery_dining, category: 'Appetizers'),
@@ -56,20 +66,30 @@ class _POSScreenState extends State<POSScreen> {
     MenuItem(name: 'Spring Rolls', price: 6.99, icon: Icons.egg, category: 'Appetizers'),
   ];
 
-  final List<OrderItem> orderItems = [
-    OrderItem(name: 'Margherita Pizza', price: 12.99, icon: Icons.local_pizza, addedTime: DateTime.now()),
-    OrderItem(name: 'Caesar Salad', price: 8.99, icon: Icons.eco, addedTime: DateTime.now()),
-    OrderItem(name: 'Coke', price: 2.50, icon: Icons.local_drink, addedTime: DateTime.now()),
+  // Multiple customers
+  List<Customer> customers = [
+    Customer(id: '1', name: 'Cust 1'),
+    Customer(id: '2', name: 'Cust 2'),
+    Customer(id: '3', name: 'Cust 3'),
   ];
-
+  
+  int selectedCustomerIndex = 0;
+  
+  Customer get selectedCustomer => customers[selectedCustomerIndex];
+  
+  // Legacy single order items (for backward compatibility)
+  List<OrderItem> get orderItems => selectedCustomer.items;
+  
   String selectedCategory = 'Appetizers';
   int holdCount = 2;
-  int kitchenCount = 1;
-  int servedCount = 0;
+  int fireCount = 1;
 
-  double get subtotal => orderItems.fold(0, (sum, item) => sum + item.price);
-  double get tax => subtotal * 0.1;
-  double get total => subtotal + tax;
+  double get subtotal => selectedCustomer.subtotal;
+  double get tax => selectedCustomer.tax;
+  double get total => selectedCustomer.total;
+  
+  // Get total for all customers combined
+  double get allCustomersTotal => customers.fold(0.0, (sum, cust) => sum + cust.total);
 
   void _selectCategory(String category) {
     setState(() {
@@ -85,24 +105,51 @@ class _POSScreenState extends State<POSScreen> {
     });
   }
 
-  void _addToOrder(MenuItem item) {
+  void _addToOrder(MenuItem item, {int customerIndex = -1}) {
+    final targetIndex = customerIndex == -1 ? selectedCustomerIndex : customerIndex;
+    
     setState(() {
-      orderItems.add(OrderItem(
-        name: item.name,
-        price: item.price,
-        icon: item.icon,
-        addedTime: DateTime.now(),
-      ));
+      // Check if item already exists in customer's order
+      final existingItemIndex = customers[targetIndex].items.indexWhere(
+        (orderItem) => orderItem.name == item.name,
+      );
+      
+      if (existingItemIndex >= 0) {
+        // Increase quantity if item exists
+        customers[targetIndex].items[existingItemIndex].quantity++;
+      } else {
+        // Add new item
+        customers[targetIndex].items.add(OrderItem(
+          name: item.name,
+          price: item.price,
+          icon: item.icon,
+          addedTime: DateTime.now(),
+          quantity: 1,
+        ));
+      }
     });
     
     // Show success feedback
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${item.name} added to order'),
+        content: Text('${item.name} added to ${customers[targetIndex].name}'),
         duration: const Duration(seconds: 1),
         backgroundColor: Theme.of(context).colorScheme.primary,
       ),
     );
+  }
+  
+  void _removeItem(int customerIndex, int itemIndex) {
+    setState(() {
+      customers[customerIndex].items.removeAt(itemIndex);
+    });
+  }
+  
+  void _updateQuantity(int customerIndex, int itemIndex, int delta) {
+    setState(() {
+      final item = customers[customerIndex].items[itemIndex];
+      item.quantity = (item.quantity + delta).clamp(1, 999);
+    });
   }
 
   void _sendToKitchen() {
@@ -191,8 +238,9 @@ class _POSScreenState extends State<POSScreen> {
                     Expanded(
                       child: Column(
                         children: [
+                          // Category Title
                           Container(
-                            padding: EdgeInsets.all(isMobile ? 15 : 20),
+                            padding: EdgeInsets.all(isMobile ? 12 : 16),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.surface,
                               border: Border(
@@ -201,17 +249,39 @@ class _POSScreenState extends State<POSScreen> {
                             ),
                             child: Row(
                               children: [
-                                Expanded(
-                                  child: Text(
-                                    selectedCategory,
-                                    style: TextStyle(
-                                      fontSize: isMobile ? 20 : 24,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
+                                Text(
+                                  selectedCategory,
+                                  style: TextStyle(
+                                    fontSize: isMobile ? 18 : 22,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          // Search Bar
+                          Container(
+                            padding: EdgeInsets.all(isMobile ? 8 : 12),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              border: Border(
+                                bottom: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: 'Search items...',
+                                prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                                filled: true,
+                                fillColor: Colors.grey.shade100,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
                             ),
                           ),
                           Expanded(
@@ -258,10 +328,42 @@ class _POSScreenState extends State<POSScreen> {
                 // Menu Tab
                 Column(
                   children: [
+                    // Category filter bar for mobile
+                    Container(
+                      height: 60,
+                      color: Theme.of(context).colorScheme.surface,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: categories.length,
+                        itemBuilder: (context, index) {
+                          final category = categories[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: FilterChip(
+                              selected: category.isActive,
+                              label: Text(category.name),
+                              avatar: Icon(
+                                category.icon,
+                                size: 18,
+                                color: category.isActive 
+                                    ? Colors.white 
+                                    : Theme.of(context).colorScheme.primary,
+                              ),
+                              selectedColor: Theme.of(context).colorScheme.primary,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  _selectCategory(category.name);
+                                }
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                     Expanded(
                       child: _buildMenuSection(),
                     ),
-                    _buildCategorySection(),
                   ],
                 ),
                 // Order Tab
@@ -291,248 +393,331 @@ class _POSScreenState extends State<POSScreen> {
       ),
       child: Column(
         children: [
-          // Selected Table Info - Combined Header
+          // Table Header with Status Badge
           Container(
-            padding: EdgeInsets.all(isMobile ? 16 : 24),
+            padding: EdgeInsets.all(isMobile ? 16 : 20),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.surface,
               border: Border(
-                bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                bottom: BorderSide(color: Colors.grey.shade300),
               ),
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.table_restaurant, 
-                  size: isMobile ? 28 : 32, 
-                  color: Theme.of(context).colorScheme.primary
+                Text(
+                  'Table 1',
+                  style: TextStyle(
+                    fontSize: isMobile ? 20 : 24,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                  ),
                 ),
-                SizedBox(width: isMobile ? 12 : 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Table 1',
-                        style: TextStyle(
-                          fontSize: isMobile ? 20 : 24,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Ground Floor',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: isMobile ? 14 : 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                SizedBox(width: 12),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Occupied',
+                    style: TextStyle(
+                      fontSize: isMobile ? 11 : 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          // Order Items
+          // Customer Sections with Orders
           Expanded(
-            child: Container(
-              color: const Color(0xFFFFF3E0),
+            child: SingleChildScrollView(
               padding: EdgeInsets.all(isMobile ? 10 : 15),
-              child: orderItems.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.shopping_cart_outlined,
-                            size: 64,
-                            color: Colors.grey.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No items in order',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ReorderableListView.builder(
-                      itemCount: orderItems.length,
-                      onReorder: (oldIndex, newIndex) {
-                        setState(() {
-                          if (newIndex > oldIndex) newIndex--;
-                          final item = orderItems.removeAt(oldIndex);
-                          orderItems.insert(newIndex, item);
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final item = orderItems[index];
-                        final duration = DateTime.now().difference(item.addedTime);
-                        final minutes = duration.inMinutes;
-                        final seconds = duration.inSeconds % 60;
-                        final isCriticalTime = minutes >= 5;
-                        
-                        return Card(
-                          key: ValueKey('${item.name}_$index'),
-                          elevation: 3,
-                          margin: EdgeInsets.only(bottom: isMobile ? 8 : 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          color: Colors.lightBlue.shade50,
-                          child: Padding(
-                            padding: EdgeInsets.all(isMobile ? 10 : 12),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.drag_handle,
-                                  color: Colors.grey.shade400,
-                                  size: isMobile ? 20 : 24,
+              child: Column(
+                children: customers.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final customer = entry.value;
+                  final customerTotal = customer.items.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
+                  
+                  return DragTarget<MenuItem>(
+                    onAccept: (menuItem) {
+                      setState(() {
+                        selectedCustomerIndex = index;
+                      });
+                      _addToOrder(menuItem, customerIndex: index);
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      return Container(
+                        margin: EdgeInsets.only(bottom: isMobile ? 12 : 16),
+                        decoration: BoxDecoration(
+                          color: candidateData.isNotEmpty ? Colors.green.shade50 : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Customer Header
+                            Container(
+                              padding: EdgeInsets.all(isMobile ? 12 : 16),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  topRight: Radius.circular(12),
                                 ),
-                                SizedBox(width: isMobile ? 8 : 12),
-                                Icon(item.icon, 
-                                     color: Theme.of(context).colorScheme.primary,
-                                     size: isMobile ? 24 : 32),
-                                SizedBox(width: isMobile ? 8 : 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        item.name,
+                                border: Border(
+                                  bottom: BorderSide(color: Colors.purple.shade200),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    customer.name,
+                                    style: TextStyle(
+                                      fontSize: isMobile ? 16 : 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.purple.shade700,
+                                    ),
+                                  ),
+                                  if (customer.items.isNotEmpty) ...[
+                                    Spacer(),
+                                    Text(
+                                      '\$${customerTotal.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: isMobile ? 14 : 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.purple.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            // Customer Items
+                            customer.items.isEmpty
+                                ? Container(
+                                    padding: EdgeInsets.all(isMobile ? 20 : 30),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(12),
+                                        bottomRight: Radius.circular(12),
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'Drag items here',
                                         style: TextStyle(
                                           fontSize: isMobile ? 14 : 16,
-                                          fontWeight: FontWeight.w600,
+                                          color: Colors.grey.shade500,
+                                          fontStyle: FontStyle.italic,
                                         ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      SizedBox(height: isMobile ? 4 : 6),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            '\$${item.price.toStringAsFixed(2)}',
-                                            style: TextStyle(
-                                              fontSize: isMobile ? 16 : 18,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.black87,
+                                    ),
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.only(
+                                        bottomLeft: Radius.circular(12),
+                                        bottomRight: Radius.circular(12),
+                                      ),
+                                    ),
+                                    child: ListView.builder(
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      itemCount: customer.items.length,
+                                      itemBuilder: (context, itemIndex) {
+                                        final item = customer.items[itemIndex];
+                                        return Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: isMobile ? 12 : 16,
+                                            vertical: isMobile ? 8 : 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                color: Colors.grey.shade200,
+                                                width: 1,
+                                              ),
                                             ),
                                           ),
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
+                                          child: Row(
                                             children: [
-                                              Icon(
-                                                Icons.timer,
-                                                size: isMobile ? 12 : 14,
-                                                color: isCriticalTime ? Colors.orange : Colors.grey.shade600,
-                                              ),
-                                              SizedBox(width: isMobile ? 2 : 4),
-                                              Text(
-                                                '${minutes}m ${seconds}s',
-                                                style: TextStyle(
-                                                  fontSize: isMobile ? 10 : 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: isCriticalTime ? Colors.orange : Colors.grey.shade600,
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      item.name,
+                                                      style: TextStyle(
+                                                        fontSize: isMobile ? 14 : 16,
+                                                        fontWeight: FontWeight.w500,
+                                                        color: Colors.black87,
+                                                      ),
+                                                    ),
+                                                    if (item.quantity > 1)
+                                                      Text(
+                                                        'Qty: ${item.quantity} x \$${item.price.toStringAsFixed(2)}',
+                                                        style: TextStyle(
+                                                          fontSize: isMobile ? 11 : 12,
+                                                          color: Colors.grey.shade600,
+                                                        ),
+                                                      ),
+                                                  ],
                                                 ),
+                                              ),
+                                              SizedBox(width: 8),
+                                              // Quantity Controls
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  IconButton(
+                                                    icon: Icon(Icons.remove_circle_outline, size: isMobile ? 18 : 20),
+                                                    color: Colors.grey.shade600,
+                                                    padding: EdgeInsets.all(4),
+                                                    constraints: BoxConstraints(),
+                                                    onPressed: () => _updateQuantity(index, itemIndex, -1),
+                                                  ),
+                                                  Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 8),
+                                                    child: Text(
+                                                      '${item.quantity}x',
+                                                      style: TextStyle(
+                                                        fontSize: isMobile ? 13 : 14,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    icon: Icon(Icons.add_circle_outline, size: isMobile ? 18 : 20),
+                                                    color: Theme.of(context).colorScheme.primary,
+                                                    padding: EdgeInsets.all(4),
+                                                    constraints: BoxConstraints(),
+                                                    onPressed: () => _updateQuantity(index, itemIndex, 1),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                '\$${(item.price * item.quantity).toStringAsFixed(2)}',
+                                                style: TextStyle(
+                                                  fontSize: isMobile ? 14 : 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                              SizedBox(width: 4),
+                                              IconButton(
+                                                icon: Icon(Icons.close, size: isMobile ? 18 : 20),
+                                                color: Colors.red.shade400,
+                                                padding: EdgeInsets.all(isMobile ? 4 : 6),
+                                                constraints: BoxConstraints(),
+                                                onPressed: () => _removeItem(index, itemIndex),
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                    ],
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.delete_outline, size: isMobile ? 18 : 20),
-                                  color: Colors.red.shade400,
-                                  onPressed: () {
-                                    setState(() {
-                                      orderItems.removeAt(index);
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
             ),
           ),
-          // Order Total
+          // Order Summary
           Container(
             padding: EdgeInsets.all(isMobile ? 12 : 20),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               border: Border(
-                top: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                top: BorderSide(color: Colors.grey.shade300, width: 2),
               ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildTotalRow('Subtotal:', subtotal, isMobile: isMobile),
-                _buildTotalRow('Tax Rate (10%):', tax, isMobile: isMobile),
-                Divider(
-                  thickness: 2,
-                  color: Colors.grey.shade300,
-                ),
-                _buildTotalRow('Total:', total, isTotal: true, isMobile: isMobile),
-                SizedBox(height: isMobile ? 10 : 15),
+                _buildTotalRow('Subtotal:', allCustomersTotal, isMobile: isMobile),
+                _buildTotalRow('Tax (10%):', allCustomersTotal * 0.1, isMobile: isMobile),
+                SizedBox(height: 8),
+                _buildTotalRow('Total:', allCustomersTotal * 1.1, isTotal: true, isMobile: isMobile),
+                SizedBox(height: isMobile ? 12 : 16),
                 Row(
                   children: [
-                    if (!isMobile) ...[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: orderItems.isEmpty ? null : () {
-                            // Save as draft functionality
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Order saved as draft')),
-                            );
-                          },
-                          icon: Icon(Icons.save_outlined, size: isMobile ? 16 : 20),
-                          label: Text(
-                            'Save Draft',
-                            style: TextStyle(fontSize: isMobile ? 12 : 14),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.grey.shade700,
-                            padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: allCustomersTotal == 0 ? null : () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('Clear All Orders?'),
+                              content: Text('Are you sure you want to clear all customer orders?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      for (var customer in customers) {
+                                        customer.items.clear();
+                                      }
+                                    });
+                                    Navigator.pop(context);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                  ),
+                                  child: Text('Clear All'),
+                                ),
+                              ],
                             ),
+                          );
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                        ),
+                        child: Text(
+                          'Clear All',
+                          style: TextStyle(fontSize: isMobile ? 14 : 16),
                         ),
                       ),
-                      SizedBox(width: 12),
-                    ],
+                    ),
+                    SizedBox(width: 12),
                     Expanded(
-                      flex: isMobile ? 1 : 2,
-                      child: ElevatedButton.icon(
-                        onPressed: orderItems.isEmpty ? null : _sendToKitchen,
-                        icon: Icon(Icons.arrow_forward, size: isMobile ? 18 : 24),
-                        label: Text(
-                          'Send to Kitchen',
-                          style: TextStyle(fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.w600),
-                        ),
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: allCustomersTotal == 0 ? null : _sendToKitchen,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
+                          backgroundColor: Colors.blue.shade600,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: Colors.grey.shade300,
                           disabledForegroundColor: Colors.grey.shade600,
-                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 16),
+                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          elevation: 5,
+                          elevation: 2,
+                        ),
+                        child: Text(
+                          'Send Kitchen',
+                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -551,6 +736,15 @@ class _POSScreenState extends State<POSScreen> {
     final isMobile = screenWidth < 768;
     final isTablet = screenWidth >= 768 && screenWidth < 1024;
     
+    // Filter menu items by selected category and search query
+    var filteredItems = menuItems.where((item) => item.category == selectedCategory).toList();
+    
+    if (_searchQuery.isNotEmpty) {
+      filteredItems = filteredItems.where((item) => 
+        item.name.toLowerCase().contains(_searchQuery)
+      ).toList();
+    }
+    
     int crossAxisCount;
     if (isMobile) {
       crossAxisCount = 2;
@@ -563,27 +757,91 @@ class _POSScreenState extends State<POSScreen> {
     return Container(
       color: const Color(0xFFFFF3E0),
       padding: EdgeInsets.all(isMobile ? 12 : 20),
-      child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: isMobile ? 12 : 20,
-          mainAxisSpacing: isMobile ? 12 : 20,
-          childAspectRatio: isMobile ? 0.75 : 0.85,
-        ),
-        itemCount: menuItems.length,
-        itemBuilder: (context, index) {
-          final item = menuItems[index];
-          return Card(
-            elevation: 5,
-            shape: RoundedRectangleBorder(
+      child: filteredItems.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.restaurant_menu,
+                    size: 64,
+                    color: Colors.grey.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No items in this category',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: isMobile ? 12 : 20,
+                mainAxisSpacing: isMobile ? 12 : 20,
+                childAspectRatio: isMobile ? 0.75 : 0.85,
+              ),
+              itemCount: filteredItems.length,
+              itemBuilder: (context, index) {
+                final item = filteredItems[index];
+          return Draggable<MenuItem>(
+            data: item,
+            feedback: Material(
+              elevation: 8,
               borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 120,
+                height: 140,
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Theme.of(context).colorScheme.primary, width: 2),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      item.icon,
+                      size: 36,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      item.name,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '\$${item.price.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                onTap: () => _addToOrder(item),
-                borderRadius: BorderRadius.circular(16),
+            childWhenDragging: Opacity(
+              opacity: 0.5,
+              child: Card(
+                elevation: 5,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: Colors.grey.shade200,
                 child: Padding(
                   padding: EdgeInsets.all(isMobile ? 12 : 16),
                   child: Column(
@@ -593,13 +851,13 @@ class _POSScreenState extends State<POSScreen> {
                       Container(
                         padding: EdgeInsets.all(isMobile ? 6 : 10),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          color: Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           item.icon,
                           size: isMobile ? 28 : 36,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: Colors.grey,
                         ),
                       ),
                       SizedBox(height: isMobile ? 8 : 12),
@@ -609,7 +867,7 @@ class _POSScreenState extends State<POSScreen> {
                           style: TextStyle(
                             fontSize: isMobile ? 12 : 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black87,
+                            color: Colors.grey,
                           ),
                           textAlign: TextAlign.center,
                           maxLines: 2,
@@ -622,10 +880,68 @@ class _POSScreenState extends State<POSScreen> {
                         style: TextStyle(
                           fontSize: isMobile ? 14 : 16,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: Colors.grey,
                         ),
                       ),
                     ],
+                  ),
+                ),
+              ),
+            ),
+            child: Card(
+              elevation: 5,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => _addToOrder(item),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: EdgeInsets.all(isMobile ? 12 : 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(isMobile ? 6 : 10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            item.icon,
+                            size: isMobile ? 28 : 36,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        SizedBox(height: isMobile ? 8 : 12),
+                        Flexible(
+                          child: Text(
+                            item.name,
+                            style: TextStyle(
+                              fontSize: isMobile ? 12 : 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(height: isMobile ? 4 : 8),
+                        Text(
+                          '\$${item.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -650,7 +966,28 @@ class _POSScreenState extends State<POSScreen> {
       ),
       child: Column(
         children: [
-          // Categories
+          // Categories Header
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  'Categories',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Categories List
           Expanded(
             child: ListView.builder(
               itemCount: categories.length,
@@ -659,7 +996,7 @@ class _POSScreenState extends State<POSScreen> {
                 return InkWell(
                   onTap: () => _selectCategory(category.name),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: category.isActive ? Theme.of(context).colorScheme.primary : null,
                       border: Border(
@@ -674,14 +1011,14 @@ class _POSScreenState extends State<POSScreen> {
                         Icon(
                           category.icon,
                           color: category.isActive ? Colors.white : Theme.of(context).colorScheme.primary,
-                          size: 24,
+                          size: 22,
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             category.name,
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: category.isActive ? FontWeight.w600 : FontWeight.w400,
                               color: category.isActive ? Colors.white : Theme.of(context).colorScheme.onSurface,
                             ),
@@ -697,8 +1034,7 @@ class _POSScreenState extends State<POSScreen> {
           // Status Counts
           StatusCountWidget(
             holdCount: holdCount,
-            kitchenCount: kitchenCount,
-            servedCount: servedCount,
+            fireCount: fireCount,
           ),
         ],
       ),
