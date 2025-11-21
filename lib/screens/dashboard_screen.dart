@@ -46,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Check if any employee in this role matches the logged-in employee
     return role.employees.any((emp) => emp.id == _currentEmployee!.employee.id);
   }
+
   void _showSettings() {
     showModalBottomSheet(
       context: context,
@@ -56,7 +57,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _navigateToRole(Role role) {
     final roleName = role.name.toLowerCase();
-    
+
     if (roleName.contains('waiter')) {
       Navigator.push(
         context,
@@ -87,7 +88,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
       );
-    } else if (roleName.contains('executive') || roleName.contains('manager') || roleName.contains('owner')) {
+    } else if (roleName.contains('executive') ||
+        roleName.contains('manager') ||
+        roleName.contains('owner')) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -117,45 +120,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final isMobile = screenWidth < 768;
     final isTablet = screenWidth >= 768 && screenWidth < 1024;
-    
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: const Color(0xFFF7F4EF),
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(isMobile ? 12 : 20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                isMobile ? 18 : 32,
+                isMobile ? 16 : 28,
+                isMobile ? 18 : 32,
+                isMobile ? 10 : 18,
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Select Your Role',
-                      style: TextStyle(
-                        fontSize: isMobile ? 18 : 28,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.primary,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Select Your Role',
+                          style: TextStyle(
+                            fontSize: isMobile ? 26 : 34,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        onPressed: _showSettings,
+                        icon: const Icon(Icons.settings_outlined),
+                        color: Theme.of(context).colorScheme.primary,
+                        iconSize: isMobile ? 20 : 24,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    onPressed: _showSettings,
-                    icon: const Icon(Icons.settings),
-                    color: Theme.of(context).colorScheme.primary,
-                    iconSize: isMobile ? 20 : 24,
+                  SizedBox(height: isMobile ? 6 : 10),
+                  Text(
+                    'Choose the workspace you want to dive into.',
+                    style: TextStyle(
+                      fontSize: isMobile ? 13 : 15,
+                      color: Colors.grey.shade600,
+                      height: 1.3,
+                    ),
                   ),
                 ],
               ),
@@ -163,21 +173,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // Dashboard Content
             Expanded(
               child: Container(
-                color: const Color(0xFFFFF3E0),
-                padding: EdgeInsets.all(isMobile ? 12 : 40),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(36)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 30,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                padding: EdgeInsets.fromLTRB(
+                  isMobile ? 16 : 32,
+                  isMobile ? 8 : 24,
+                  isMobile ? 16 : 32,
+                  isMobile ? 16 : 32,
+                ),
                 child: GridView.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: isMobile ? 1 : 2,
                     crossAxisSpacing: isMobile ? 12 : 20,
                     mainAxisSpacing: isMobile ? 12 : 20,
-                    childAspectRatio: isMobile 
-                      ? (screenWidth < 400 ? 3.5 : 3.2)
-                      : 1.6,
+                    childAspectRatio:
+                        isMobile ? (screenWidth < 400 ? 3.5 : 3.2) : 1.6,
                   ),
                   itemCount: _getDashboardItems().length,
                   itemBuilder: (context, index) {
                     final item = _getDashboardItems()[index];
-                    final isActive = item.role != null && _isRoleActive(item.role!);
+                    final isActive =
+                        item.role != null && _isRoleActive(item.role!);
                     final hasAnyLoggedIn = _currentEmployee != null;
                     return _DashboardCard(
                       item: item,
@@ -259,7 +285,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         subtitle = 'Full System Configuration Access';
         icon = Icons.admin_panel_settings;
         color = Colors.indigo;
-      } else if (roleName.contains('executive') || roleName.contains('manager') || roleName.contains('owner')) {
+      } else if (roleName.contains('executive') ||
+          roleName.contains('manager') ||
+          roleName.contains('owner')) {
         title = 'Owner / Executive';
         subtitle = 'Highest Level Financial & Reporting Access';
         icon = Icons.business;
@@ -320,127 +348,159 @@ class _DashboardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iconSize = isMobile ? 28.0 : 48.0;
-    final padding = isMobile ? 10.0 : 24.0;
-    final titleFontSize = isMobile ? 15.0 : 20.0;
-    final subtitleFontSize = isMobile ? 11.0 : 14.0;
-    final iconPadding = isMobile ? 8.0 : 16.0;
-    final spacing = isMobile ? 8.0 : 16.0;
-    
-    return Card(
-      elevation: 5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: EdgeInsets.all(padding),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: hasAnyLoggedIn
-                  ? [
-                      if (isActive)
-                        Colors.green.withOpacity(0.1)
-                      else
-                        item.color.withOpacity(0.05),
-                      if (isActive)
-                        Colors.green.withOpacity(0.05)
-                      else
-                        item.color.withOpacity(0.02),
-                    ]
-                  : [
-                      item.color.withOpacity(0.1),
-                      item.color.withOpacity(0.05),
-                    ],
-            ),
-            border: hasAnyLoggedIn && isActive
-                ? Border.all(color: Colors.green, width: 2)
-                : hasAnyLoggedIn && !isActive
-                    ? Border.all(color: Colors.grey.shade300, width: 1)
-                    : null,
+    final padding = isMobile ? 16.0 : 24.0;
+    final titleFontSize = isMobile ? 16.0 : 20.0;
+    final subtitleFontSize = isMobile ? 12.0 : 14.0;
+    final iconContainerSize = isMobile ? 58.0 : 72.0;
+    final spacing = isMobile ? 14.0 : 20.0;
+
+    final gradientColors = [
+      item.color.withOpacity(0.18),
+      item.color.withOpacity(0.08),
+    ];
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: EdgeInsets.all(padding),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: gradientColors,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(iconPadding),
-                decoration: BoxDecoration(
-                  color: item.color.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  item.icon,
-                  size: iconSize,
-                  color: item.color,
-                ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withOpacity(0.9),
+              offset: const Offset(-6, -6),
+              blurRadius: 14,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              offset: const Offset(8, 10),
+              blurRadius: 24,
+            ),
+            if (hasAnyLoggedIn && isActive)
+              BoxShadow(
+                color: Colors.green.withOpacity(0.25),
+                offset: const Offset(0, 6),
+                blurRadius: 20,
               ),
-              SizedBox(width: spacing),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.title,
-                            style: TextStyle(
-                              fontSize: titleFontSize,
-                              fontWeight: FontWeight.w600,
-                              color: themeColor,
-                            ),
-                            textAlign: TextAlign.left,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (hasAnyLoggedIn)
-                          Container(
-                            padding: EdgeInsets.all(isMobile ? 4 : 6),
-                            decoration: BoxDecoration(
-                              color: isActive ? Colors.green : Colors.grey.shade400,
-                              shape: BoxShape.circle,
-                              boxShadow: isActive
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.green.withOpacity(0.4),
-                                        blurRadius: 4,
-                                        spreadRadius: 1,
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Icon(
-                              isActive ? Icons.check_circle : Icons.lock,
-                              size: isMobile ? 16 : 20,
-                              color: Colors.white,
-                            ),
-                          ),
-                      ],
-                    ),
-                    SizedBox(height: isMobile ? 4 : 6),
-                    Text(
-                      item.subtitle,
-                      style: TextStyle(
-                        fontSize: subtitleFontSize,
-                        color: Colors.grey,
-                      ),
-                      textAlign: TextAlign.left,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+          ],
+          border: Border.all(
+            color: hasAnyLoggedIn && isActive
+                ? Colors.green.withOpacity(0.6)
+                : Colors.white.withOpacity(0.3),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: iconContainerSize,
+              height: iconContainerSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    item.color,
+                    item.color.withOpacity(0.6),
                   ],
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: item.color.withOpacity(0.4),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-            ],
-          ),
+              child: Icon(
+                item.icon,
+                size: iconSize,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: spacing),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: TextStyle(
+                            fontSize: titleFontSize,
+                            fontWeight: FontWeight.w600,
+                            color: themeColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.grey.shade700,
+                        size: isMobile ? 18 : 22,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isMobile ? 6 : 10),
+                  Text(
+                    item.subtitle,
+                    style: TextStyle(
+                      fontSize: subtitleFontSize,
+                      color: Colors.grey.shade700,
+                      height: 1.4,
+                    ),
+                  ),
+                  SizedBox(height: isMobile ? 10 : 14),
+                  if (hasAnyLoggedIn)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 10 : 14,
+                        vertical: isMobile ? 4 : 6,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        color: (isActive ? Colors.green : Colors.grey)
+                            .withOpacity(0.15),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isActive ? Icons.check_circle : Icons.lock,
+                            size: isMobile ? 14 : 16,
+                            color:
+                                isActive ? Colors.green : Colors.grey.shade600,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            isActive ? 'Currently active' : 'Locked',
+                            style: TextStyle(
+                              fontSize: isMobile ? 11 : 12,
+                              fontWeight: FontWeight.w600,
+                              color: isActive
+                                  ? Colors.green
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -12,10 +12,91 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+class _PrimaryGradientButton extends StatelessWidget {
+  final bool isLoading;
+  final VoidCallback onTap;
+  final bool isMobile;
+
+  const _PrimaryGradientButton({
+    required this.isLoading,
+    required this.onTap,
+    required this.isMobile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const gradient = LinearGradient(
+      colors: [
+        Color(0xFFFF8A00),
+        Color(0xFFFF3D00),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.deepOrange.withOpacity(0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(32),
+            onTap: isLoading ? null : onTap,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: isMobile ? 14 : 18),
+              child: Center(
+                child: isLoading
+                    ? SizedBox(
+                        height: isMobile ? 20 : 24,
+                        width: isMobile ? 20 : 24,
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        'Sign In',
+                        style: TextStyle(
+                          fontSize: isMobile ? 15 : 17,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+
+  void _showForgotPasswordMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content:
+            Text('Please contact your administrator to reset your password.'),
+      ),
+    );
+  }
 
   Future<void> _login() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -73,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
-    
+
     return Scaffold(
       body: SafeArea(
         child: Container(
@@ -87,16 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
           child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.35),
-                  Colors.black.withOpacity(0.65),
-                ],
-              ),
-            ),
+            color: Colors.black.withOpacity(0.6),
             child: Center(
               child: SingleChildScrollView(
                 child: Container(
@@ -104,13 +176,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   constraints: const BoxConstraints(maxWidth: 450),
                   padding: EdgeInsets.all(isMobile ? 24 : 40),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.25),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 30,
+                        offset: const Offset(0, 20),
                       ),
                     ],
                   ),
@@ -124,13 +196,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(
                               fontSize: isMobile ? 24 : 32,
                               fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
                             ),
                           ),
                           SizedBox(height: isMobile ? 6 : 8),
                           Text(
                             'Sign in to access the system',
                             style: TextStyle(
-                              color: Colors.grey,
+                              color: Colors.grey.shade600,
                               fontSize: isMobile ? 12 : 14,
                             ),
                           ),
@@ -143,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Text(
                             'Email',
                             style: TextStyle(
-                              color: Colors.grey,
+                              color: Colors.grey.shade700,
                               fontSize: isMobile ? 12 : 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -153,17 +226,22 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _emailController,
                             decoration: InputDecoration(
                               hintText: 'your@email.com',
-                              filled: true,
-                              fillColor: const Color(0xFFFFF3E0),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFFFCCBC)),
+                              border: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.3,
+                                ),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 2,
+                                ),
                               ),
-                              contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
+                              contentPadding: EdgeInsets.only(
+                                top: isMobile ? 12 : 16,
+                                bottom: isMobile ? 6 : 8,
+                              ),
                             ),
                           ),
                         ],
@@ -175,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           Text(
                             'Password',
                             style: TextStyle(
-                              color: Colors.grey,
+                              color: Colors.grey.shade700,
                               fontSize: isMobile ? 12 : 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -186,54 +264,48 @@ class _LoginScreenState extends State<LoginScreen> {
                             obscureText: true,
                             decoration: InputDecoration(
                               hintText: '••••••••',
-                              filled: true,
-                              fillColor: const Color(0xFFFFF3E0),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFFFCCBC)),
+                              border: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                  width: 1.3,
+                                ),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Theme.of(context).colorScheme.primary),
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 2,
+                                ),
                               ),
-                              contentPadding: EdgeInsets.all(isMobile ? 12 : 16),
+                              contentPadding: EdgeInsets.only(
+                                top: isMobile ? 12 : 16,
+                                bottom: isMobile ? 6 : 8,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: isMobile ? 24 : 30),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: isMobile ? 14 : 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      SizedBox(height: isMobile ? 12 : 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _showForgotPasswordMessage,
+                          style: TextButton.styleFrom(
+                            foregroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            padding: EdgeInsets.zero,
+                            textStyle: TextStyle(
+                              fontSize: isMobile ? 12 : 13,
+                              fontWeight: FontWeight.w500,
                             ),
-                            elevation: 5,
-                            shadowColor: Colors.black.withOpacity(0.3),
-                            disabledBackgroundColor: Colors.grey,
                           ),
-                          child: _isLoading
-                              ? SizedBox(
-                                  height: isMobile ? 20 : 24,
-                                  width: isMobile ? 20 : 24,
-                                  child: const CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : Text(
-                                  'Sign In',
-                                  style: TextStyle(
-                                    fontSize: isMobile ? 14 : 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                          child: const Text('Forgot Password?'),
                         ),
+                      ),
+                      SizedBox(height: isMobile ? 16 : 24),
+                      _PrimaryGradientButton(
+                        isLoading: _isLoading,
+                        onTap: _login,
+                        isMobile: isMobile,
                       ),
                     ],
                   ),

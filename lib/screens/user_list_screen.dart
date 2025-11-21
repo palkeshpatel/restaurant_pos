@@ -41,12 +41,14 @@ class _UserListScreenState extends State<UserListScreen> {
   }
 
   bool _isEmployeeLoggedIn(Employee employee) {
-    return _currentEmployee != null && _currentEmployee!.employee.id == employee.id;
+    return _currentEmployee != null &&
+        _currentEmployee!.employee.id == employee.id;
   }
 
   Future<void> _selectEmployee(Employee employee) async {
     // Check if this employee is already logged in
-    if (_currentEmployee != null && _currentEmployee!.employee.id == employee.id) {
+    if (_currentEmployee != null &&
+        _currentEmployee!.employee.id == employee.id) {
       // Same user already logged in, go directly to floor selection
       if (mounted) {
         Navigator.pushReplacement(
@@ -60,9 +62,10 @@ class _UserListScreenState extends State<UserListScreen> {
       }
       return;
     }
-    
+
     // Check if there's a different logged-in employee
-    if (_currentEmployee != null && _currentEmployee!.employee.id != employee.id) {
+    if (_currentEmployee != null &&
+        _currentEmployee!.employee.id != employee.id) {
       // Show popup to logout previous user
       final shouldLogout = await showDialog<bool>(
         context: context,
@@ -72,7 +75,8 @@ class _UserListScreenState extends State<UserListScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${_currentEmployee!.employee.fullName} is currently logged in.'),
+              Text(
+                  '${_currentEmployee!.employee.fullName} is currently logged in.'),
               const SizedBox(height: 8),
               const Text('Do you want to logout and login as this user?'),
             ],
@@ -101,7 +105,7 @@ class _UserListScreenState extends State<UserListScreen> {
         setState(() {
           _currentEmployee = null;
         });
-        
+
         // Navigate to PIN screen for new employee
         if (mounted) {
           Navigator.push(
@@ -143,9 +147,9 @@ class _UserListScreenState extends State<UserListScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
-    
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: const Color(0xFFF7F4EF),
       body: SafeArea(
         child: Column(
           children: [
@@ -154,13 +158,17 @@ class _UserListScreenState extends State<UserListScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 border: Border(
-                  bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                  bottom: BorderSide(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.3)),
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -168,7 +176,8 @@ class _UserListScreenState extends State<UserListScreen> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.primary),
                     iconSize: isMobile ? 20 : 24,
                   ),
                   SizedBox(width: isMobile ? 8 : 20),
@@ -207,34 +216,53 @@ class _UserListScreenState extends State<UserListScreen> {
                         itemCount: employees.length,
                         itemBuilder: (context, index) {
                           final employee = employees[index];
-                          return Card(
-                            elevation: 5,
-                            margin: EdgeInsets.only(bottom: isMobile ? 10 : 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                          final isLoggedIn = _isEmployeeLoggedIn(employee);
+                          return Container(
+                            margin: EdgeInsets.only(bottom: isMobile ? 12 : 18),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Color(0xFFFFF5EC),
+                                  Colors.white,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
                             ),
                             child: ListTile(
+                              onTap: () => _selectEmployee(employee),
                               leading: Stack(
+                                clipBehavior: Clip.none,
                                 children: [
                                   AvatarWidget(
                                     imageUrl: employee.avatar,
                                     initials: employee.initials,
-                                    radius: isMobile ? 24 : 30,
-                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                    radius: isMobile ? 28 : 34,
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.primary,
                                   ),
-                                  if (_isEmployeeLoggedIn(employee))
+                                  if (isLoggedIn)
                                     Positioned(
-                                      right: 0,
-                                      bottom: 0,
+                                      right: -2,
+                                      bottom: -2,
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
                                           color: Colors.green,
                                           shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 2),
+                                          border: Border.all(
+                                              color: Colors.white, width: 2),
                                         ),
                                         child: Icon(
-                                          Icons.lock_open,
+                                          Icons.check,
                                           size: isMobile ? 12 : 14,
                                           color: Colors.white,
                                         ),
@@ -242,58 +270,46 @@ class _UserListScreenState extends State<UserListScreen> {
                                     ),
                                 ],
                               ),
-                              title: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      employee.fullName,
-                                      style: TextStyle(
-                                        fontSize: isMobile ? 16 : 18,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                  if (_isEmployeeLoggedIn(employee))
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isMobile ? 6 : 8,
-                                        vertical: isMobile ? 2 : 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.lock_open,
-                                            size: isMobile ? 12 : 14,
-                                            color: Colors.white,
-                                          ),
-                                          SizedBox(width: isMobile ? 4 : 6),
-                                          Text(
-                                            'Logged In',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: isMobile ? 10 : 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              subtitle: Text(
-                                employee.email,
+                              title: Text(
+                                employee.fullName,
                                 style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: isMobile ? 13 : 14,
+                                  fontSize: isMobile ? 17 : 19,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              onTap: () => _selectEmployee(employee),
-                              contentPadding: EdgeInsets.all(isMobile ? 12 : 20),
+                              subtitle: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      employee.email,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: isMobile ? 13 : 14,
+                                      ),
+                                    ),
+                                    SizedBox(height: 6),
+                                    _StatusBadge(
+                                      label: isLoggedIn
+                                          ? 'Active session'
+                                          : (employee.isActive
+                                              ? 'Active'
+                                              : 'Offline'),
+                                      isActive: isLoggedIn || employee.isActive,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              trailing: Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.grey.shade500,
+                                size: isMobile ? 22 : 26,
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: isMobile ? 14 : 22,
+                                vertical: isMobile ? 12 : 18,
+                              ),
                             ),
                           );
                         },
@@ -302,6 +318,50 @@ class _UserListScreenState extends State<UserListScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String label;
+  final bool isActive;
+
+  const _StatusBadge({
+    required this.label,
+    required this.isActive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isActive ? Colors.green : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

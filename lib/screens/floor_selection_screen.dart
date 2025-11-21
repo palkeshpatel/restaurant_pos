@@ -91,12 +91,13 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
     if (shouldLogout == true) {
       await ApiService.logoutEmployee();
       await StorageService.removeCurrentEmployee();
-      
+
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (context) => DashboardScreen(onThemeChange: widget.onThemeChange),
+            builder: (context) =>
+                DashboardScreen(onThemeChange: widget.onThemeChange),
           ),
           (route) => false,
         );
@@ -116,9 +117,9 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
-    
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: const Color(0xFFF7F4EF),
       body: SafeArea(
         child: Column(
           children: [
@@ -127,7 +128,11 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 border: Border(
-                  bottom: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+                  bottom: BorderSide(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.3)),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -141,7 +146,8 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.primary),
+                    icon: Icon(Icons.arrow_back,
+                        color: Theme.of(context).colorScheme.primary),
                     iconSize: isMobile ? 20 : 24,
                   ),
                   SizedBox(width: isMobile ? 8 : 20),
@@ -172,7 +178,7 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
             ),
             Expanded(
               child: Container(
-                padding: EdgeInsets.all(isMobile ? 12 : 20),
+                padding: EdgeInsets.all(isMobile ? 14 : 24),
                 child: _isLoading
                     ? Center(
                         child: CircularProgressIndicator(
@@ -204,7 +210,8 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('Retry'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Theme.of(context).colorScheme.primary,
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.primary,
                                     foregroundColor: Colors.white,
                                   ),
                                 ),
@@ -222,95 +229,170 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
                                 ),
                               )
                             : GridView.builder(
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: isMobile ? 1 : 2,
-                                  mainAxisSpacing: isMobile ? 12 : 20,
-                                  crossAxisSpacing: isMobile ? 12 : 20,
-                                  childAspectRatio: isMobile ? 2.5 : 1.1,
+                                  mainAxisSpacing: isMobile ? 12 : 18,
+                                  crossAxisSpacing: isMobile ? 12 : 18,
+                                  childAspectRatio: isMobile ? 2.1 : 2.4,
                                 ),
                                 itemCount: floors.length,
                                 itemBuilder: (context, index) {
                                   final floor = floors[index];
-                                  final occupiedCount = floor.tables.where((t) => t.isOccupied).length;
-                                  final availableCount = floor.tables.where((t) => t.isAvailable).length;
-                                  return Card(
-                                    elevation: 8,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: InkWell(
-                                      onTap: () => _selectFloor(floor),
-                                      borderRadius: BorderRadius.circular(20),
-                                      child: Container(
-                                        padding: EdgeInsets.all(isMobile ? 16 : 20),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(20),
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                                              Theme.of(context).colorScheme.secondary.withOpacity(0.05),
-                                            ],
-                                          ),
+                                  final occupiedCount = floor.tables
+                                      .where((t) => t.isOccupied)
+                                      .length;
+                                  final availableCount = floor.tables
+                                      .where((t) => t.isAvailable)
+                                      .length;
+                                  final gradientPalettes = [
+                                    [
+                                      const Color(0xFFFFE4C4),
+                                      const Color(0xFFFFF4E3)
+                                    ],
+                                    [
+                                      const Color(0xFFE4F5FF),
+                                      const Color(0xFFF3FAFF)
+                                    ],
+                                    [
+                                      const Color(0xFFEFE5FF),
+                                      const Color(0xFFF8F2FF)
+                                    ],
+                                  ];
+                                  final colors = gradientPalettes[
+                                      index % gradientPalettes.length];
+
+                                  return InkWell(
+                                    onTap: () => _selectFloor(floor),
+                                    borderRadius: BorderRadius.circular(25),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      padding:
+                                          EdgeInsets.all(isMobile ? 16 : 20),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: colors,
                                         ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            Container(
-                                              padding: EdgeInsets.all(isMobile ? 12 : 16),
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                floor.icon,
-                                                size: isMobile ? 32 : 48,
-                                                color: Theme.of(context).colorScheme.primary,
-                                              ),
-                                            ),
-                                            SizedBox(width: isMobile ? 12 : 15),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                children: [
-                                                  Text(
-                                                    floor.name,
-                                                    style: TextStyle(
-                                                      fontSize: isMobile ? 16 : 18,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: Theme.of(context).colorScheme.primary,
-                                                    ),
-                                                    textAlign: TextAlign.left,
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  SizedBox(height: isMobile ? 4 : 6),
-                                                  Row(
-                                                    children: [
-                                                      _buildStatusChip(
-                                                        'Available',
-                                                        availableCount,
-                                                        Colors.green,
-                                                        isMobile,
-                                                      ),
-                                                      SizedBox(width: isMobile ? 6 : 8),
-                                                      if (occupiedCount > 0)
-                                                        _buildStatusChip(
-                                                          'Occupied',
-                                                          occupiedCount,
-                                                          Colors.orange,
-                                                          isMobile,
-                                                        ),
-                                                    ],
-                                                  ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.08),
+                                            blurRadius: 18,
+                                            offset: const Offset(0, 10),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: isMobile ? 64 : 72,
+                                            height: isMobile ? 64 : 72,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                  Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                      .withOpacity(0.7),
                                                 ],
                                               ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                      .withOpacity(0.35),
+                                                  blurRadius: 16,
+                                                  offset: const Offset(0, 8),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
+                                            child: Icon(
+                                              floor.icon,
+                                              size: isMobile ? 30 : 36,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          SizedBox(width: isMobile ? 14 : 18),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  floor.name,
+                                                  style: TextStyle(
+                                                    fontSize:
+                                                        isMobile ? 18 : 20,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                SizedBox(
+                                                    height: isMobile ? 6 : 8),
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.table_bar,
+                                                      size: isMobile ? 18 : 20,
+                                                      color:
+                                                          Colors.grey.shade600,
+                                                    ),
+                                                    SizedBox(width: 6),
+                                                    Text(
+                                                      '${floor.tables.length} tables',
+                                                      style: TextStyle(
+                                                        color: Colors
+                                                            .grey.shade700,
+                                                        fontSize:
+                                                            isMobile ? 13 : 14,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(width: isMobile ? 12 : 16),
+                                          Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              _buildStatusChip(
+                                                'Available',
+                                                availableCount,
+                                                Colors.green,
+                                                isMobile,
+                                              ),
+                                              SizedBox(height: 10),
+                                              _buildStatusChip(
+                                                'Occupied',
+                                                occupiedCount,
+                                                Colors.orange,
+                                                isMobile,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   );
@@ -327,32 +409,34 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
   Widget _buildStatusChip(String label, int count, Color color, bool isMobile) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 6 : 8,
-        vertical: isMobile ? 2 : 4,
+        horizontal: isMobile ? 12 : 16,
+        vertical: isMobile ? 6 : 8,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(999),
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.18),
+            color.withOpacity(0.08),
+          ],
+        ),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: isMobile ? 6 : 8,
-            height: isMobile ? 6 : 8,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+          Icon(
+            label == 'Available' ? Icons.check_circle : Icons.circle,
+            size: isMobile ? 14 : 16,
+            color: color,
           ),
-          SizedBox(width: isMobile ? 4 : 6),
+          SizedBox(width: 6),
           Text(
             '$count $label',
             style: TextStyle(
-              fontSize: isMobile ? 10 : 12,
-              color: color,
+              fontSize: isMobile ? 12 : 13,
               fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],
@@ -360,4 +444,3 @@ class _FloorSelectionScreenState extends State<FloorSelectionScreen> {
     );
   }
 }
-
