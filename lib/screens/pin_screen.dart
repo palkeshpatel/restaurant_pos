@@ -176,129 +176,134 @@ class _PinScreenState extends State<PinScreen> {
             ),
             Expanded(
               child: Center(
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.9,
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withOpacity(0.8),
-                        offset: const Offset(-6, -6),
-                        blurRadius: 16,
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        offset: const Offset(10, 16),
-                        blurRadius: 30,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AvatarWidget(
-                        imageUrl: widget.employee?.avatar,
-                        initials: avatarInitials,
-                        radius: 38,
-                        backgroundColor: primary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Enter PIN',
-                        style: theme.textTheme.displayMedium?.copyWith(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.9,
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 36),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withOpacity(0.8),
+                          offset: const Offset(-6, -6),
+                          blurRadius: 16,
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        widget.employee != null
-                            ? 'Welcome back, ${widget.employee!.fullName}'
-                            : 'Secure access to continue',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 14,
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          offset: const Offset(10, 16),
+                          blurRadius: 30,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 28),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(4, (index) {
-                          final isFilled = index < pin.length;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOut,
-                            width: isFilled ? 28 : 24,
-                            height: isFilled ? 28 : 24,
-                            margin: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: isFilled
-                                  ? (_pinComplete ? Colors.green : primary)
-                                  : Colors.grey.shade200,
-                              shape: BoxShape.circle,
-                              boxShadow: isFilled
-                                  ? [
-                                      BoxShadow(
-                                        color: (_pinComplete
-                                                ? Colors.green
-                                                : primary)
-                                            .withOpacity(0.4),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                          );
-                        }),
-                      ),
-                      const SizedBox(height: 32),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 20,
-                          crossAxisSpacing: 20,
-                          childAspectRatio: 1,
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AvatarWidget(
+                          imageUrl: widget.employee?.avatar,
+                          initials: avatarInitials,
+                          radius: 38,
+                          backgroundColor: primary,
                         ),
-                        itemCount: 12,
-                        itemBuilder: (context, index) {
-                          if (index == 9) {
-                            return _buildPinButton(
-                              icon: Icons.backspace_rounded,
-                              onTap: _removeDigit,
-                              primary: primary,
+                        const SizedBox(height: 16),
+                        Text(
+                          'Enter PIN',
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.employee != null
+                              ? 'Welcome back, ${widget.employee!.fullName}'
+                              : 'Secure access to continue',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 28),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(4, (index) {
+                            final isFilled = index < pin.length;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOut,
+                              width: isFilled ? 28 : 24,
+                              height: isFilled ? 28 : 24,
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: isFilled
+                                    ? (_pinComplete ? Colors.green : primary)
+                                    : Colors.grey.shade200,
+                                shape: BoxShape.circle,
+                                boxShadow: isFilled
+                                    ? [
+                                        BoxShadow(
+                                          color: (_pinComplete
+                                                  ? Colors.green
+                                                  : primary)
+                                              .withOpacity(0.4),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
                             );
-                          } else if (index == 11) {
-                            return _buildPinButton(
-                              icon: Icons.check_circle_rounded,
-                              onTap: () {
-                                if (pin.length == 4 && !_isLoading) {
-                                  _verifyPin();
-                                }
-                              },
-                              primary: primary,
-                            );
-                          } else {
-                            final digit =
-                                index == 10 ? '0' : (index + 1).toString();
-                            return _buildPinButton(
-                              text: digit,
-                              onTap: () => _addDigit(digit),
-                              primary: primary,
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                          }),
+                        ),
+                        const SizedBox(height: 32),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 18,
+                            crossAxisSpacing: 18,
+                            childAspectRatio: 1,
+                          ),
+                          itemCount: 12,
+                          itemBuilder: (context, index) {
+                            if (index == 9) {
+                              return _buildPinButton(
+                                icon: Icons.backspace_rounded,
+                                onTap: _removeDigit,
+                                primary: primary,
+                              );
+                            } else if (index == 11) {
+                              return _buildPinButton(
+                                icon: Icons.check_circle_rounded,
+                                onTap: () {
+                                  if (pin.length == 4 && !_isLoading) {
+                                    _verifyPin();
+                                  }
+                                },
+                                primary: primary,
+                              );
+                            } else {
+                              final digit =
+                                  index == 10 ? '0' : (index + 1).toString();
+                              return _buildPinButton(
+                                text: digit,
+                                onTap: () => _addDigit(digit),
+                                primary: primary,
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

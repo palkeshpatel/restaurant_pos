@@ -197,7 +197,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisSpacing: isMobile ? 12 : 20,
                     mainAxisSpacing: isMobile ? 12 : 20,
                     childAspectRatio:
-                        isMobile ? (screenWidth < 400 ? 3.5 : 3.2) : 1.6,
+                        isMobile ? (screenWidth < 400 ? 2.6 : 2.3) : 1.6,
                   ),
                   itemCount: _getDashboardItems().length,
                   itemBuilder: (context, index) {
@@ -253,8 +253,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           route: 'admin',
         ),
         DashboardItem(
-          title: 'Owner / Executive',
-          subtitle: 'Highest Level Financial & Reporting Access',
+          title: 'Executive',
+          subtitle: 'Executive-Level Financial & Reporting',
           icon: Icons.business,
           color: Colors.amber,
           route: 'owner',
@@ -288,8 +288,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else if (roleName.contains('executive') ||
           roleName.contains('manager') ||
           roleName.contains('owner')) {
-        title = 'Owner / Executive';
-        subtitle = 'Highest Level Financial & Reporting Access';
+        title = 'Executive';
+        subtitle = 'Executive-Level Financial & Reporting';
         icon = Icons.business;
         color = Colors.amber;
       } else {
