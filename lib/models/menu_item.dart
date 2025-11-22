@@ -37,11 +37,21 @@ class MenuItem {
         .map((group) => DecisionGroup.fromJson(group))
         .toList();
 
+    // Handle price_cash and price_card - they might come as strings or numbers
+    double parsePrice(dynamic priceValue) {
+      if (priceValue == null) return 0.0;
+      if (priceValue is num) return priceValue.toDouble();
+      if (priceValue is String) {
+        return double.tryParse(priceValue) ?? 0.0;
+      }
+      return 0.0;
+    }
+    
     return MenuItem(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
-      priceCash: (json['price_cash'] ?? 0).toDouble(),
-      priceCard: (json['price_card'] ?? 0).toDouble(),
+      priceCash: parsePrice(json['price_cash']),
+      priceCard: parsePrice(json['price_card']),
       image: json['image'],
       iconImage: json['icon_image'],
       printerRouteId: json['printer_route_id'],
@@ -92,10 +102,20 @@ class Modifier {
   });
 
   factory Modifier.fromJson(Map<String, dynamic> json) {
+    // Handle additional_price - might come as string or number
+    double parsePrice(dynamic priceValue) {
+      if (priceValue == null) return 0.0;
+      if (priceValue is num) return priceValue.toDouble();
+      if (priceValue is String) {
+        return double.tryParse(priceValue) ?? 0.0;
+      }
+      return 0.0;
+    }
+    
     return Modifier(
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
-      additionalPrice: (json['additional_price'] ?? 0).toDouble(),
+      additionalPrice: parsePrice(json['additional_price']),
     );
   }
 }

@@ -55,8 +55,14 @@ class _POSScreenState extends State<POSScreen> {
       });
     });
     _startTimer();
-    _loadMenu();
     _loadOrderId();
+    // Load menu first, then load existing order items
+    _loadMenu().then((_) {
+      // Wait a bit for menu to fully load, then load order items
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _loadExistingOrderItems();
+      });
+    });
   }
 
   void _loadOrderId() {
@@ -79,6 +85,229 @@ class _POSScreenState extends State<POSScreen> {
       print('_loadOrderId: Final _orderId = $_orderId');
       print('_loadOrderId: Final _orderTicketId = $_orderTicketId');
     });
+  }
+
+  Future<void> _loadExistingOrderItems() async {
+    // Only load if we have an order_ticket_id (resuming existing order)
+    final orderTicketId = _orderTicketId ?? widget.table?.orderTicketId;
+    
+    if (orderTicketId == null || orderTicketId.isEmpty) {
+      print('_loadExistingOrderItems: No order_ticket_id, skipping load');
+      return;
+    }
+
+    // Verify we're using ID format (starts with "ORD-"), not title format
+    if (!orderTicketId.startsWith('ORD-')) {
+      print('_loadExistingOrderItems: orderTicketId does not start with "ORD-", skipping');
+      return;
+    }
+
+    print('========================================');
+    print('_loadExistingOrderItems: Loading order items');
+    print('order_ticket_id: $orderTicketId');
+    print('========================================');
+
+    try {
+      final response = await ApiService.resumeOrder(orderTicketId: orderTicketId);
+
+      if (!mounted) return;
+
+      print('_loadExistingOrderItems: API Response - success: ${response.success}');
+      print('_loadExistingOrderItems: API Response - message: ${response.message}');
+      print('_loadExistingOrderItems: response.data is null: ${response.data == null}');
+      
+      if (response.data != null) {
+        print('_loadExistingOrderItems: response.data keys: ${response.data!.toJson().keys}');
+        print('_loadExistingOrderItems: Full response.data: ${response.data!.toJson()}');
+      }
+
+      if (response.success && response.data != null) {
+        final orderData = response.data!.order;
+        
+        // Also try getting order directly from response.data if it's nested differently
+        if (orderData == null && response.data!.toJson().containsKey('order')) {
+          final rawData = response.data!.toJson();
+          print('_loadExistingOrderItems: Trying to get order from raw data');
+          // The order might be in the response.data map directly
+        }
+        
+        print('_loadExistingOrderItems: orderData is null: ${orderData == null}');
+        if (orderData != null) {
+          print('_loadExistingOrderItems: orderData keys: ${orderData.keys}');
+          print('_loadExistingOrderItems: orderData has checks: ${orderData.containsKey('checks')}');
+          
+          // Extract order items from checks array
+          List<dynamic> allOrderItems = [];
+          
+          if (orderData['checks'] != null) {
+            final checks = orderData['checks'] as List<dynamic>? ?? [];
+            print('_loadExistingOrderItems: Found ${checks.length} checks');
+            
+            for (var check in checks) {
+              if (check is! Map) continue;
+              
+              print('_loadExistingOrderItems: Check keys: ${check.keys}');
+              // The API returns 'order_items' in snake_case
+              final orderItems = check['order_items'];
+              
+              if (orderItems != null && orderItems is List) {
+                print('_loadExistingOrderItems: Found ${orderItems.length} items in check');
+                allOrderItems.addAll(orderItems);
+              } else {
+                print('_loadExistingOrderItems: No order_items found in check or not a list');
+              }
+            }
+          } else {
+            print('_loadExistingOrderItems: No checks found in order data');
+          }
+          
+          print('_loadExistingOrderItems: Total items found: ${allOrderItems.length}');
+          
+          if (allOrderItems.isNotEmpty) {
+            // Clear existing items first
+            for (var customer in customers) {
+              customer.items.clear();
+            }
+
+            // Load menu to get item names and prices
+            final menuResponse = await ApiService.getMenu();
+            Map<int, MenuItem> menuItemsMap = {};
+            
+            if (menuResponse.success && menuResponse.data != null) {
+              for (var menu in menuResponse.data!.menus) {
+                for (var category in menu.categories) {
+                  for (var item in category.menuItems) {
+                    menuItemsMap[item.id] = item;
+                  }
+                }
+              }
+            }
+
+            print('_loadExistingOrderItems: Loaded ${menuItemsMap.length} menu items');
+
+            // Process ALL order items (both sent and pending) - user wants to see all previous orders
+            int loadedCount = 0;
+            int sentCount = 0;
+            for (var orderItemData in allOrderItems) {
+              print('_loadExistingOrderItems: Processing item: $orderItemData');
+              
+              final menuItemId = orderItemData['menu_item_id'] as int?;
+              final customerNo = orderItemData['customer_no'] as int? ?? 1;
+              final qty = orderItemData['qty'] as int? ?? 1;
+              
+              // Handle unit_price as both string and number
+              double unitPrice = 0.0;
+              final unitPriceValue = orderItemData['unit_price'];
+              if (unitPriceValue is num) {
+                unitPrice = unitPriceValue.toDouble();
+              } else if (unitPriceValue is String) {
+                unitPrice = double.tryParse(unitPriceValue) ?? 0.0;
+              }
+              
+              final instructions = orderItemData['instructions'] as String?;
+              
+              // Get the unique ID from database - if it exists, item is saved
+              final orderItemId = orderItemData['id'] as int?;
+              final status = orderItemData['status'] as String? ?? 'pending';
+              
+              if (orderItemId != null) {
+                sentCount++; // Count saved items
+              }
+              
+              print('_loadExistingOrderItems: menu_item_id: $menuItemId, customer_no: $customerNo, qty: $qty, unit_price: $unitPrice, orderItemId: $orderItemId, status: $status');
+              
+              if (menuItemId == null) {
+                print('_loadExistingOrderItems: Skipping item - no menu_item_id');
+                continue;
+              }
+              
+              // Get menu item details
+              final menuItem = menuItemsMap[menuItemId];
+              String itemName = 'Item #$menuItemId';
+              double itemPrice = unitPrice;
+              
+              if (menuItem != null) {
+                itemName = menuItem.name;
+                // Use unit_price from order_item if available, otherwise use menu item price
+                if (unitPrice <= 0) {
+                  itemPrice = menuItem.price;
+                }
+              } else {
+                print('_loadExistingOrderItems: Menu item not found for id: $menuItemId');
+                // Try to get name from order_item if it has menu_item relationship
+                if (orderItemData['menu_item'] != null) {
+                  final menuItemData = orderItemData['menu_item'] as Map<String, dynamic>?;
+                  itemName = menuItemData?['name'] as String? ?? itemName;
+                }
+                // If unit_price is 0, we can't determine price, skip this item
+                if (unitPrice <= 0) {
+                  print('_loadExistingOrderItems: Skipping item - no price available and menu item not found');
+                  continue;
+                }
+              }
+              
+              if (customerNo >= 1 && customerNo <= customers.length) {
+                // Add to the appropriate customer (customer_no is 1-based)
+                final customerIndex = customerNo - 1;
+                final customer = customers[customerIndex];
+                
+                // Check if item already exists (same menu_item_id)
+                final existingIndex = customer.items.indexWhere(
+                  (item) => item.menuItemId == menuItemId,
+                );
+                
+                if (existingIndex >= 0) {
+                  // Update quantity if exists
+                  customer.items[existingIndex].quantity += qty;
+                  print('_loadExistingOrderItems: Updated quantity for existing item: $itemName');
+                } else {
+                  // Add new item - store the unique ID from database
+                  final dbOrderItemId = orderItemData['id'] as int?;
+                  customer.items.add(OrderItem(
+                    name: itemName,
+                    price: itemPrice,
+                    icon: Icons.restaurant_menu,
+                    addedTime: DateTime.now(),
+                    menuItemId: menuItemId,
+                    quantity: qty,
+                    instructions: instructions,
+                    orderItemId: dbOrderItemId, // Store unique ID from database (null = not saved yet)
+                  ));
+                  loadedCount++;
+                  print('_loadExistingOrderItems: Added item: $itemName (₹$itemPrice x $qty) to customer $customerNo - OrderItemID: $dbOrderItemId, Status: $status');
+                }
+              } else {
+                print('_loadExistingOrderItems: Invalid customer_no: $customerNo (must be 1-${customers.length})');
+              }
+            }
+
+            print('_loadExistingOrderItems: Successfully loaded $loadedCount items ($sentCount already sent, ${loadedCount - sentCount} pending)');
+
+            if (mounted) {
+              setState(() {
+                // Update order ID if not already set
+                _orderId = orderData['id'] as int? ?? _orderId;
+              });
+              
+              if (sentCount > 0) {
+                print('_loadExistingOrderItems: Note: $sentCount items were already sent to kitchen (shown for reference)');
+              }
+              print('_loadExistingOrderItems: State updated, total items loaded');
+            }
+          } else {
+            print('_loadExistingOrderItems: No order items found in response');
+          }
+        } else {
+          print('_loadExistingOrderItems: orderData is null');
+        }
+      } else {
+        print('_loadExistingOrderItems: Failed to load order - ${response.message}');
+      }
+    } catch (e, stackTrace) {
+      print('_loadExistingOrderItems: Error loading order items - $e');
+      print('_loadExistingOrderItems: Stack trace - $stackTrace');
+    }
+    print('========================================');
   }
 
   String _formatOrderStart(DateTime dateTime) {
@@ -190,24 +419,30 @@ class _POSScreenState extends State<POSScreen> {
     final targetIndex = customerIndex == -1 ? selectedCustomerIndex : customerIndex;
     
     setState(() {
-      // Check if item already exists in customer's order (with same menu_item_id)
-      final existingItemIndex = customers[targetIndex].items.indexWhere(
-        (orderItem) => orderItem.menuItemId == item.id,
+      // Check if there's a TEMPORARY item (no orderItemId = not saved yet) with the same menu_item_id
+      // We only merge with temporary items, not with saved items (they have orderItemId)
+      final existingTemporaryItemIndex = customers[targetIndex].items.indexWhere(
+        (orderItem) => orderItem.menuItemId == item.id && orderItem.isTemporary,
       );
       
-      if (existingItemIndex >= 0) {
-        // Increase quantity if item exists
-        customers[targetIndex].items[existingItemIndex].quantity++;
+      if (existingTemporaryItemIndex >= 0) {
+        // Increase quantity if temporary item exists (not saved yet)
+        customers[targetIndex].items[existingTemporaryItemIndex].quantity++;
+        print('_addToOrder: Increased quantity for temporary item: ${item.name} (now ${customers[targetIndex].items[existingTemporaryItemIndex].quantity})');
       } else {
-        // Add new item with menu_item_id
+        // Add new temporary item (no orderItemId = not saved in database yet)
+        // This allows adding more of the same item even if it was already sent before
+        // MenuItem.price is already a double, use it directly
         customers[targetIndex].items.add(OrderItem(
           name: item.name,
-          price: item.price,
+          price: item.price, // Already a double from MenuItem
           icon: Icons.restaurant_menu,
           addedTime: DateTime.now(),
           menuItemId: item.id,
           quantity: 1,
+          orderItemId: null, // New items have no ID (temporary)
         ));
+        print('_addToOrder: Added new temporary item: ${item.name} (price: ${item.price} (${item.price.runtimeType}), total items in customer: ${customers[targetIndex].items.length})');
       }
     });
     
@@ -222,6 +457,20 @@ class _POSScreenState extends State<POSScreen> {
   }
   
   void _removeItem(int customerIndex, int itemIndex) {
+    final item = customers[customerIndex].items[itemIndex];
+    
+    // Only allow deleting temporary items (not saved in database)
+    if (item.isSaved) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot delete item that is already saved. This item was sent to kitchen.'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
     setState(() {
       customers[customerIndex].items.removeAt(itemIndex);
     });
@@ -304,24 +553,57 @@ class _POSScreenState extends State<POSScreen> {
       return;
     }
 
-    // Collect all items from all customers
+    // Collect all items from all customers - ONLY items that haven't been sent yet
+    // Also track which OrderItem objects correspond to each item we're sending
     final List<Map<String, dynamic>> itemsToSend = [];
+    final List<OrderItem> sentOrderItems = []; // Track the actual OrderItem objects
     
-    for (final customer in customers) {
+    for (var customerIndex = 0; customerIndex < customers.length; customerIndex++) {
+      final customer = customers[customerIndex];
+      final customerNo = customerIndex + 1; // Customer numbers are 1-based
+      
       for (final orderItem in customer.items) {
+        // Only send temporary items (not saved in database yet - no orderItemId)
+        // Items with orderItemId are already saved/sent
+        if (orderItem.isSaved) {
+          print('_sendToKitchen: Skipping item "${orderItem.name}" - already saved (ID: ${orderItem.orderItemId})');
+          continue;
+        }
+        
         // Convert each order item to API format
-        final itemData = {
+        // Ensure price is definitely a number - convert to double explicitly
+        final unitPrice = orderItem.price is double 
+            ? orderItem.price 
+            : (orderItem.price is num 
+                ? orderItem.price.toDouble() 
+                : double.tryParse(orderItem.price.toString()) ?? 0.0);
+        
+        final itemData = <String, dynamic>{
           'menu_item_id': orderItem.menuItemId,
           'qty': orderItem.quantity,
-          'unit_price': orderItem.price,
+          'unit_price': unitPrice, // Explicitly converted to double
+          'customer_no': customerNo,
           if (orderItem.instructions != null && orderItem.instructions!.isNotEmpty)
             'instructions': orderItem.instructions,
           if (orderItem.decisionIds != null && orderItem.decisionIds!.isNotEmpty)
             'decisions': orderItem.decisionIds!.map((id) => {'decision_id': id}).toList(),
           if (orderItem.modifiers != null && orderItem.modifiers!.isNotEmpty)
-            'modifiers': orderItem.modifiers,
+            'modifiers': orderItem.modifiers!.map((modifier) {
+              // Ensure modifier prices are numbers
+              dynamic modPrice = modifier['price'];
+              double modPriceDouble = modPrice is num 
+                  ? modPrice.toDouble() 
+                  : double.tryParse(modPrice.toString()) ?? 0.0;
+              
+              return <String, dynamic>{
+                'modifier_id': modifier['modifier_id'] as int,
+                'qty': modifier['qty'] as int,
+                'price': modPriceDouble,
+              };
+            }).toList(),
         };
         itemsToSend.add(itemData);
+        sentOrderItems.add(orderItem); // Track which OrderItem this corresponds to
       }
     }
 
@@ -357,17 +639,55 @@ class _POSScreenState extends State<POSScreen> {
       print('You must use order_ticket_id (ORD-20251121-XJROYU), not order_ticket_title (20251121-01T1)');
     }
 
+    // Final safety check: Ensure all prices are numbers (not strings) before encoding
+    for (var item in itemsToSend) {
+      final unitPrice = item['unit_price'];
+      if (unitPrice is String) {
+        print('_sendToKitchen: FIXING - unit_price is String: $unitPrice');
+        item['unit_price'] = double.tryParse(unitPrice) ?? 0.0;
+      } else if (unitPrice is! num) {
+        print('_sendToKitchen: FIXING - unit_price is not a number: $unitPrice (${unitPrice.runtimeType})');
+        item['unit_price'] = double.tryParse(unitPrice.toString()) ?? 0.0;
+      }
+      
+      // Also check modifiers
+      if (item['modifiers'] != null) {
+        final modifiers = item['modifiers'] as List;
+        for (var mod in modifiers) {
+          final modPrice = mod['price'];
+          if (modPrice is String) {
+            print('_sendToKitchen: FIXING - modifier price is String: $modPrice');
+            mod['price'] = double.tryParse(modPrice) ?? 0.0;
+          } else if (modPrice is! num) {
+            mod['price'] = double.tryParse(modPrice.toString()) ?? 0.0;
+          }
+        }
+      }
+    }
+
     try {
       // Create formatted request body for debugging
+      // Ensure all numeric values are properly typed before encoding
       final requestBody = {
         'order_ticket_id': orderTicketId, // MUST be ORD-20251121-XJROYU, NOT 20251121-01T1
         'order_id': _orderId,
         'items': itemsToSend,
       };
       
-      // Print formatted JSON for debugging
-      final formattedJson = const JsonEncoder.withIndent('  ').convert(requestBody);
-      final rawJson = jsonEncode(requestBody);
+      // Print formatted JSON for debugging - wrap in try-catch to handle any type errors
+      String formattedJson;
+      String rawJson;
+      try {
+        formattedJson = const JsonEncoder.withIndent('  ').convert(requestBody);
+        rawJson = jsonEncode(requestBody);
+      } catch (e) {
+        print('ERROR encoding JSON: $e');
+        print('Request body types:');
+        for (var item in itemsToSend) {
+          print('  unit_price: ${item['unit_price']} (${item['unit_price'].runtimeType})');
+        }
+        rethrow; // Re-throw to be caught by outer catch
+      }
       
       print('========================================');
       print('📤 PREPARING REQUEST TO: /api/pos/order/send');
@@ -409,28 +729,142 @@ class _POSScreenState extends State<POSScreen> {
         final data = response.data;
         final newItemsCount = data?['new_items_count'] ?? 0;
         
+        // Update items with their returned IDs from database
+        // This marks them as "saved" so they won't be sent again (duplicate prevention)
+        if (newItemsCount > 0) {
+          final newItems = data?['new_items'] as List<dynamic>? ?? [];
+          
+          print('_sendToKitchen: Received ${newItems.length} new items from API');
+          print('_sendToKitchen: Sent ${sentOrderItems.length} items');
+          
+          // Match sent items with returned items by index (they should be in the same order)
+          // This is more reliable than matching by properties
+          bool updatedAny = false;
+          for (var i = 0; i < sentOrderItems.length && i < newItems.length; i++) {
+            final sentItem = sentOrderItems[i];
+            final returnedItem = newItems[i];
+            
+            // Verify it's the same item (safety check)
+            final returnedMenuItemId = returnedItem['menu_item_id'] as int?;
+            final returnedId = returnedItem['id'] as int?;
+            
+            if (returnedMenuItemId == sentItem.menuItemId && returnedId != null) {
+              // Update item with its database ID - this marks it as saved
+              sentItem.orderItemId = returnedId;
+              updatedAny = true;
+              print('_sendToKitchen: Updated item "${sentItem.name}" (menu_item_id: $returnedMenuItemId) with orderItemId: $returnedId (now marked as saved)');
+            } else {
+              print('_sendToKitchen: WARNING - Mismatch at index $i: sent menu_item_id=${sentItem.menuItemId}, returned menu_item_id=$returnedMenuItemId');
+            }
+          }
+          
+          // If index matching didn't work, fall back to property matching
+          if (!updatedAny && newItems.isNotEmpty) {
+            print('_sendToKitchen: Index matching failed, trying property matching...');
+            for (var sentItem in sentOrderItems) {
+              if (sentItem.isSaved) continue; // Already updated
+              
+              for (var returnedItem in newItems) {
+                final returnedMenuItemId = returnedItem['menu_item_id'] as int?;
+                final returnedCustomerNo = returnedItem['customer_no'] as int? ?? 1;
+                final returnedQty = returnedItem['qty'] as int?;
+                final returnedId = returnedItem['id'] as int?;
+                
+                // Find which customer this sentItem belongs to
+                int sentItemCustomerNo = 1;
+                for (var i = 0; i < customers.length; i++) {
+                  if (customers[i].items.contains(sentItem)) {
+                    sentItemCustomerNo = i + 1;
+                    break;
+                  }
+                }
+                
+                // Match by menu_item_id, customer_no, and qty
+                if (returnedMenuItemId == sentItem.menuItemId &&
+                    returnedCustomerNo == sentItemCustomerNo &&
+                    returnedQty == sentItem.quantity &&
+                    returnedId != null) {
+                  sentItem.orderItemId = returnedId;
+                  updatedAny = true;
+                  print('_sendToKitchen: Updated item "${sentItem.name}" with ID: $returnedId (property match)');
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Update UI to reflect saved items
+          if (updatedAny && mounted) {
+            setState(() {
+              // State updated - items now have orderItemId and are marked as saved
+            });
+            print('_sendToKitchen: Updated ${sentOrderItems.where((item) => item.isSaved).length} items as saved');
+          } else {
+            print('_sendToKitchen: WARNING - No items were marked as saved! This will cause duplicates.');
+          }
+        }
+        
         if (newItemsCount == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('All items already sent to kitchen'),
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('All items already sent to kitchen'),
+                  ),
+                ],
+              ),
               backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
             ),
           );
         } else {
+          // Show beautiful success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Successfully sent ${newItemsCount} item(s) to kitchen'),
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 28),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order Submitted Successfully!',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '${newItemsCount} item(s) sent to kitchen',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: EdgeInsets.all(16),
             ),
           );
 
-          // Optionally navigate to kitchen status screen
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => KitchenStatusScreen(onThemeChange: widget.onThemeChange),
-            ),
-          );
+          // Don't navigate away - user stays on POS screen
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -914,22 +1348,65 @@ class _POSScreenState extends State<POSScreen> {
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   mainAxisSize: MainAxisSize.min,
                                                   children: [
-                                                    Text(
-                                                      item.name,
-                                                      style: TextStyle(
-                                                        fontSize: isMobile ? 14 : 16,
-                                                        fontWeight: FontWeight.w500,
-                                                        color: Colors.black87,
-                                                      ),
-                                                    ),
-                                                    if (item.quantity > 1)
-                                                      Text(
-                                                        'Qty: ${item.quantity} x \$${item.price.toStringAsFixed(2)}',
-                                                        style: TextStyle(
-                                                          fontSize: isMobile ? 11 : 12,
-                                                          color: Colors.grey.shade600,
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            item.name,
+                                                            style: TextStyle(
+                                                              fontSize: isMobile ? 14 : 16,
+                                                              fontWeight: FontWeight.w500,
+                                                              color: item.isSaved 
+                                                                  ? Colors.grey.shade600 
+                                                                  : Colors.black87,
+                                                              decoration: item.isSaved 
+                                                                  ? TextDecoration.lineThrough 
+                                                                  : null,
+                                                            ),
+                                                          ),
                                                         ),
-                                                      ),
+                                                        if (item.isSaved)
+                                                          Padding(
+                                                            padding: EdgeInsets.only(left: 8),
+                                                            child: Container(
+                                                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.green.shade100,
+                                                                borderRadius: BorderRadius.circular(8),
+                                                              ),
+                                                              child: Row(
+                                                                mainAxisSize: MainAxisSize.min,
+                                                                children: [
+                                                                  Icon(
+                                                                    Icons.check_circle,
+                                                                    size: 12,
+                                                                    color: Colors.green.shade700,
+                                                                  ),
+                                                                  SizedBox(width: 4),
+                                                                  Text(
+                                                                    'Sent',
+                                                                    style: TextStyle(
+                                                                      fontSize: 10,
+                                                                      fontWeight: FontWeight.w600,
+                                                                      color: Colors.green.shade700,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                                      if (item.quantity > 1)
+                                                        Text(
+                                                          'Qty: ${item.quantity} x \$${item.price.toStringAsFixed(2)}',
+                                                          style: TextStyle(
+                                                            fontSize: isMobile ? 11 : 12,
+                                                            color: item.isSaved 
+                                                                ? Colors.grey.shade500 
+                                                                : Colors.grey.shade600,
+                                                          ),
+                                                        ),
                                                   ],
                                                 ),
                                               ),
@@ -973,14 +1450,18 @@ class _POSScreenState extends State<POSScreen> {
                                                   color: Colors.black87,
                                                 ),
                                               ),
-                                              SizedBox(width: 4),
-                                              IconButton(
-                                                icon: Icon(Icons.close, size: isMobile ? 18 : 20),
-                                                color: Colors.red.shade400,
-                                                padding: EdgeInsets.all(isMobile ? 4 : 6),
-                                                constraints: BoxConstraints(),
-                                                onPressed: () => _removeItem(index, itemIndex),
-                                              ),
+                                              // Only show delete button for temporary items (not saved)
+                                              if (!item.isSaved) ...[
+                                                SizedBox(width: 4),
+                                                IconButton(
+                                                  icon: Icon(Icons.close, size: isMobile ? 18 : 20),
+                                                  color: Colors.red.shade400,
+                                                  padding: EdgeInsets.all(isMobile ? 4 : 6),
+                                                  constraints: BoxConstraints(),
+                                                  onPressed: () => _removeItem(index, itemIndex),
+                                                  tooltip: 'Remove item',
+                                                ),
+                                              ],
                                             ],
                                           ),
                                         );

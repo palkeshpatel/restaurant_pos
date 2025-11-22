@@ -468,4 +468,55 @@ class ApiService {
       );
     }
   }
+
+  static Future<ApiResponse<ReserveTableResponse>> resumeOrder({
+    required String orderTicketId,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return ApiResponse<ReserveTableResponse>(
+          success: false,
+          message: 'No token found',
+          data: null,
+        );
+      }
+
+      final url = Uri.parse('${await baseUrl}/api/pos/resume_order');
+      final body = {
+        'order_ticket_id': orderTicketId,
+      };
+
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(body),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && jsonResponse['success'] == true) {
+        final data = jsonResponse['data'] ?? {};
+        final resumeResponse = ReserveTableResponse.fromJson(data);
+        
+        return ApiResponse<ReserveTableResponse>(
+          success: true,
+          message: jsonResponse['message'] ?? 'Order resumed successfully',
+          data: resumeResponse,
+        );
+      } else {
+        return ApiResponse<ReserveTableResponse>(
+          success: false,
+          message: jsonResponse['message'] ?? 'Failed to resume order',
+          data: null,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<ReserveTableResponse>(
+        success: false,
+        message: 'Error: ${e.toString()}',
+        data: null,
+      );
+    }
+  }
 }
