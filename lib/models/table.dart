@@ -4,6 +4,7 @@ class TableModel {
   final String size;
   final int capacity;
   final String status;
+  final int? orderId;
   final String? orderTicketId;
   final String? orderTicketTitle;
   final int? occupiedByEmployeeId;
@@ -16,6 +17,7 @@ class TableModel {
     required this.size,
     required this.capacity,
     required this.status,
+    this.orderId,
     this.orderTicketId,
     this.orderTicketTitle,
     this.occupiedByEmployeeId,
@@ -34,6 +36,7 @@ class TableModel {
     String? size,
     int? capacity,
     String? status,
+    int? orderId,
     String? orderTicketId,
     String? orderTicketTitle,
     int? occupiedByEmployeeId,
@@ -46,6 +49,7 @@ class TableModel {
       size: size ?? this.size,
       capacity: capacity ?? this.capacity,
       status: status ?? this.status,
+      orderId: orderId ?? this.orderId,
       orderTicketId: orderTicketId ?? this.orderTicketId,
       orderTicketTitle: orderTicketTitle ?? this.orderTicketTitle,
       occupiedByEmployeeId: occupiedByEmployeeId ?? this.occupiedByEmployeeId,
@@ -61,6 +65,7 @@ class TableModel {
       size: json['size'] ?? 'medium',
       capacity: json['capacity'] ?? 4,
       status: json['status'] ?? 'available',
+      orderId: json['order_id'],
       orderTicketId: json['order_ticket_id']?.toString(),
       orderTicketTitle: json['order_ticket_title']?.toString(),
       occupiedByEmployeeId: json['occupied_by_employee_id'],

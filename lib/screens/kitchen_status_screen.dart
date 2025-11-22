@@ -32,8 +32,8 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         icon: Icons.pause,
         color: Colors.orange,
         items: [
-          OrderItem(name: 'Burger', price: 12.99, icon: Icons.lunch_dining, addedTime: DateTime.now().subtract(const Duration(minutes: 10))),
-          OrderItem(name: 'Pizza', price: 14.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 5))),
+          OrderItem(name: 'Burger', price: 12.99, icon: Icons.lunch_dining, addedTime: DateTime.now().subtract(const Duration(minutes: 10)), menuItemId: 1),
+          OrderItem(name: 'Pizza', price: 14.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 5)), menuItemId: 2),
         ],
       ),
       OrderStatus(
@@ -41,7 +41,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         icon: Icons.local_fire_department,
         color: Colors.red,
         items: [
-          OrderItem(name: 'Margherita Pizza', price: 12.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 15))),
+          OrderItem(name: 'Margherita Pizza', price: 12.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 15)), menuItemId: 3),
         ],
       ),
     ];

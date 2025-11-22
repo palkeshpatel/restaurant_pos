@@ -30,12 +30,12 @@ class _HotelSafeScreenState extends State<HotelSafeScreen> {
   void _loadAllOrders() {
     // Load all orders from all statuses (similar to kitchen status screen)
     _allOrders = [
-      OrderItem(name: 'Burger', price: 12.99, icon: Icons.lunch_dining, addedTime: DateTime.now().subtract(const Duration(minutes: 10))),
-      OrderItem(name: 'Pizza', price: 14.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 5))),
-      OrderItem(name: 'Margherita Pizza', price: 12.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 15))),
-      OrderItem(name: 'Caesar Salad', price: 8.99, icon: Icons.eco, addedTime: DateTime.now().subtract(const Duration(minutes: 20))),
-      OrderItem(name: 'Chicken Wings', price: 9.99, icon: Icons.kebab_dining, addedTime: DateTime.now().subtract(const Duration(minutes: 8))),
-      OrderItem(name: 'Coke', price: 2.50, icon: Icons.local_drink, addedTime: DateTime.now().subtract(const Duration(minutes: 3))),
+      OrderItem(name: 'Burger', price: 12.99, icon: Icons.lunch_dining, addedTime: DateTime.now().subtract(const Duration(minutes: 10)), menuItemId: 1),
+      OrderItem(name: 'Pizza', price: 14.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 5)), menuItemId: 2),
+      OrderItem(name: 'Margherita Pizza', price: 12.99, icon: Icons.local_pizza, addedTime: DateTime.now().subtract(const Duration(minutes: 15)), menuItemId: 3),
+      OrderItem(name: 'Caesar Salad', price: 8.99, icon: Icons.eco, addedTime: DateTime.now().subtract(const Duration(minutes: 20)), menuItemId: 4),
+      OrderItem(name: 'Chicken Wings', price: 9.99, icon: Icons.kebab_dining, addedTime: DateTime.now().subtract(const Duration(minutes: 8)), menuItemId: 5),
+      OrderItem(name: 'Coke', price: 2.50, icon: Icons.local_drink, addedTime: DateTime.now().subtract(const Duration(minutes: 3)), menuItemId: 6),
     ];
   }
 

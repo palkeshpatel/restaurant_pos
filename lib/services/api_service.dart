@@ -284,7 +284,23 @@ class ApiService {
       final jsonResponse = jsonDecode(response.body);
 
       if (response.statusCode == 200 && jsonResponse['success'] == true) {
-        final reserveResponse = ReserveTableResponse.fromJson(jsonResponse['data'] ?? {});
+        final data = jsonResponse['data'] ?? {};
+        print('========================================');
+        print('RESERVE_TABLE API RESPONSE:');
+        print('Raw data: $data');
+        print('order_ticket_id from API: ${data['order_ticket_id']}');
+        print('order_ticket_title from API: ${data['order_ticket_title']}');
+        print('========================================');
+        
+        final reserveResponse = ReserveTableResponse.fromJson(data);
+        
+        print('========================================');
+        print('PARSED ReserveTableResponse:');
+        print('reserveResponse.orderTicketId: ${reserveResponse.orderTicketId}');
+        print('reserveResponse.orderTicketTitle: ${reserveResponse.orderTicketTitle}');
+        print('reserveResponse.orderId: ${reserveResponse.orderId}');
+        print('========================================');
+        
         return ApiResponse<ReserveTableResponse>(
           success: true,
           message: jsonResponse['message'] ?? reserveResponse.message ?? 'Table reserved successfully',
@@ -341,6 +357,111 @@ class ApiService {
       }
     } catch (e) {
       return ApiResponse<MenuResponse>(
+        success: false,
+        message: 'Error: ${e.toString()}',
+        data: null,
+      );
+    }
+  }
+
+  static Future<ApiResponse<Map<String, dynamic>>> sendOrder({
+    required String orderTicketId,
+    required int orderId,
+    required List<Map<String, dynamic>> items,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: 'No token found',
+          data: null,
+        );
+      }
+
+      final url = Uri.parse('${await baseUrl}/api/pos/order/send');
+      final body = {
+        'order_ticket_id': orderTicketId,
+        'order_id': orderId,
+        'items': items,
+      };
+
+      // Log the request body for debugging - FORMATTED JSON
+      final requestBodyJson = jsonEncode(body);
+      final formattedRequestBody = const JsonEncoder.withIndent('  ').convert(body);
+      
+      print('========================================');
+      print('🚀 POST REQUEST: /api/pos/order/send');
+      print('========================================');
+      print('📍 URL: $url');
+      print('🔑 Headers:');
+      _headers.forEach((key, value) {
+        if (key == 'Authorization') {
+          print('   $key: Bearer ${value.toString().substring(7)}...');
+        } else {
+          print('   $key: $value');
+        }
+      });
+      print('');
+      print('📦 REQUEST BODY (Formatted JSON):');
+      print(formattedRequestBody);
+      print('');
+      print('📦 REQUEST BODY (Raw JSON - for copy/paste):');
+      print(requestBodyJson);
+      print('========================================');
+      print('');
+
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: requestBodyJson,
+      );
+
+      // Log the response
+      print('========================================');
+      print('📥 RESPONSE RECEIVED');
+      print('========================================');
+      print('📊 Status Code: ${response.statusCode}');
+      print('📄 Response Body:');
+      try {
+        final responseJson = jsonDecode(response.body);
+        print(const JsonEncoder.withIndent('  ').convert(responseJson));
+      } catch (e) {
+        print(response.body);
+      }
+      print('========================================');
+      print('');
+
+      final jsonResponse = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && jsonResponse['success'] == true) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          message: jsonResponse['message'] ?? 'Order sent to kitchen successfully',
+          data: jsonResponse['data'] as Map<String, dynamic>?,
+        );
+      } else {
+        String errorMessage = jsonResponse['message'] ?? 'Failed to send order to kitchen';
+        
+        // Extract validation errors if present
+        if (jsonResponse['errors'] != null) {
+          final errors = jsonResponse['errors'] as Map<String, dynamic>;
+          final errorList = errors.values
+              .expand((e) => (e as List).map((msg) => msg.toString()))
+              .join(', ');
+          if (errorList.isNotEmpty) {
+            errorMessage = errorList;
+          }
+        }
+
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: errorMessage,
+          data: null,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
         success: false,
         message: 'Error: ${e.toString()}',
         data: null,

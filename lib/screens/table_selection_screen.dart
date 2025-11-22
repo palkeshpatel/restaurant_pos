@@ -98,6 +98,7 @@ class _TableSelectionScreenState extends State<TableSelectionScreen> {
 
     if (!table.isAvailable) {
       // Table belongs to this employee, navigate directly
+      // Get order_id and order_ticket_id from table model (from get-tables API)
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -105,6 +106,8 @@ class _TableSelectionScreenState extends State<TableSelectionScreen> {
             onThemeChange: widget.onThemeChange,
             floor: widget.floor,
             table: table,
+            orderId: table.orderId, // Get from table model (from get-tables API)
+            orderTicketId: table.orderTicketId, // Get from table model (from get-tables API)
           ),
         ),
       );
@@ -123,6 +126,7 @@ class _TableSelectionScreenState extends State<TableSelectionScreen> {
       if (index != -1) {
         final updatedTable = tables[index].copyWith(
           status: 'occupied',
+          orderId: response.orderId, // Store order_id from reserve_table response
           orderTicketId: response.orderTicketId,
           orderTicketTitle: response.orderTicketTitle,
           occupiedByEmployeeId: _currentEmployee?.employee.id,
@@ -144,6 +148,8 @@ class _TableSelectionScreenState extends State<TableSelectionScreen> {
               onThemeChange: widget.onThemeChange,
               floor: widget.floor,
               table: updatedTable,
+              orderId: response.orderId, // Pass order_id from reserve_table response
+              orderTicketId: response.orderTicketId, // Pass order_ticket_id from reserve_table response
             ),
           ),
         );
@@ -231,7 +237,7 @@ class _TableSelectionScreenState extends State<TableSelectionScreen> {
                     crossAxisCount: isMobile ? 2 : 3,
                     mainAxisSpacing: isMobile ? 12 : 20,
                     crossAxisSpacing: isMobile ? 12 : 20,
-                    childAspectRatio: isMobile ? 1.1 : 1,
+                    childAspectRatio: isMobile ? 0.85 : 1,
                   ),
                   itemCount: tables.length,
                   itemBuilder: (context, index) {
@@ -269,146 +275,182 @@ class _TableSelectionScreenState extends State<TableSelectionScreen> {
                               ],
                             ),
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Stack(
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(isMobile ? 8 : 12),
-                                    decoration: BoxDecoration(
-                                      color: tableColor.withOpacity(0.2),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      _getTableIcon(table),
-                                      size: isMobile ? 28 : 40,
-                                      color: tableColor,
-                                    ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              return SingleChildScrollView(
+                                physics: const NeverScrollableScrollPhysics(),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: constraints.maxHeight,
                                   ),
-                                  if (isOccupied || isReserved)
-                                    Positioned(
-                                      right: 0,
-                                      top: 0,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.orange,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white, width: 2),
-                                        ),
-                                        child: Icon(
-                                          isReserved ? Icons.event_busy : Icons.restaurant,
-                                          size: isMobile ? 10 : 12,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              SizedBox(height: isMobile ? 8 : 12),
-                              Flexible(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      table.name,
-                                      style: TextStyle(
-                                        fontSize: isMobile ? 14 : 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: tableColor,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    SizedBox(height: isMobile ? 4 : 6),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: isMobile ? 6 : 8,
-                                        vertical: isMobile ? 2 : 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: tableColor.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: tableColor.withOpacity(0.5)),
-                                      ),
-                                      child: Text(
-                                        statusText,
-                                        style: TextStyle(
-                                          fontSize: isMobile ? 10 : 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: tableColor,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (!table.isAvailable &&
-                                        (table.occupiedByEmployeeName?.isNotEmpty ?? false)) ...[
-                                      SizedBox(height: isMobile ? 4 : 6),
-                                      Text(
-                                        'By ${table.occupiedByEmployeeName}',
-                                        style: TextStyle(
-                                          fontSize: isMobile ? 10 : 12,
-                                          color: Colors.grey.shade700,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                    if (isOwnedByCurrent && !table.isAvailable) ...[
-                                      SizedBox(height: isMobile ? 4 : 6),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: isMobile ? 6 : 8,
-                                          vertical: isMobile ? 2 : 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.teal.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Colors.teal.withOpacity(0.5)),
-                                        ),
-                                        child: Text(
-                                          'My Table',
-                                          style: TextStyle(
-                                            fontSize: isMobile ? 10 : 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.teal,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    if (table.capacity > 0) ...[
-                                      SizedBox(height: isMobile ? 4 : 6),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Column(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
-                                            Icons.people,
-                                            size: isMobile ? 10 : 12,
-                                            color: Colors.grey,
+                                          Stack(
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.all(isMobile ? 6 : 10),
+                                                decoration: BoxDecoration(
+                                                  color: tableColor.withOpacity(0.2),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  _getTableIcon(table),
+                                                  size: isMobile ? 24 : 36,
+                                                  color: tableColor,
+                                                ),
+                                              ),
+                                              if (isOccupied || isReserved)
+                                                Positioned(
+                                                  right: 0,
+                                                  top: 0,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.all(3),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.orange,
+                                                      shape: BoxShape.circle,
+                                                      border: Border.all(color: Colors.white, width: 1.5),
+                                                    ),
+                                                    child: Icon(
+                                                      isReserved ? Icons.event_busy : Icons.restaurant,
+                                                      size: isMobile ? 8 : 10,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
-                                          SizedBox(width: isMobile ? 2 : 4),
+                                          SizedBox(height: isMobile ? 6 : 8),
                                           Text(
-                                            '${table.capacity}',
+                                            table.name,
                                             style: TextStyle(
-                                              fontSize: isMobile ? 10 : 12,
-                                              color: Colors.grey,
+                                              fontSize: isMobile ? 14 : 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: tableColor,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          SizedBox(height: isMobile ? 3 : 4),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: isMobile ? 4 : 6,
+                                              vertical: isMobile ? 2 : 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: tableColor.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: tableColor.withOpacity(0.5)),
+                                            ),
+                                            child: Text(
+                                              statusText,
+                                              style: TextStyle(
+                                                fontSize: isMobile ? 9 : 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: tableColor,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
+                                          if (!table.isAvailable &&
+                                              (table.occupiedByEmployeeName?.isNotEmpty ?? false)) ...[
+                                            SizedBox(height: isMobile ? 3 : 4),
+                                            Text(
+                                              'By ${table.occupiedByEmployeeName}',
+                                              style: TextStyle(
+                                                fontSize: isMobile ? 9 : 10,
+                                                color: Colors.grey.shade700,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (isOwnedByCurrent && !table.isAvailable) ...[
+                                            SizedBox(height: isMobile ? 4 : 6),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: isMobile ? 6 : 8,
+                                                vertical: isMobile ? 3 : 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.teal.withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: Colors.teal.withOpacity(0.5)),
+                                              ),
+                                              child: Text(
+                                                'My Table',
+                                                style: TextStyle(
+                                                  fontSize: isMobile ? 9 : 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.teal,
+                                                ),
+                                              ),
+                                            ),
+                                          ] else if (table.isAvailable) ...[
+                                            SizedBox(height: isMobile ? 4 : 6),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: isMobile ? 6 : 8,
+                                                vertical: isMobile ? 3 : 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green.withOpacity(0.2),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: Colors.green.withOpacity(0.5)),
+                                              ),
+                                              child: Text(
+                                                'Available',
+                                                style: TextStyle(
+                                                  fontSize: isMobile ? 9 : 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.green,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          if (table.capacity > 0) ...[
+                                            SizedBox(height: isMobile ? 3 : 4),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.people,
+                                                  size: isMobile ? 9 : 11,
+                                                  color: Colors.grey,
+                                                ),
+                                                SizedBox(width: isMobile ? 2 : 3),
+                                                Text(
+                                                  '${table.capacity}',
+                                                  style: TextStyle(
+                                                    fontSize: isMobile ? 9 : 11,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ],
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ),
                       ),

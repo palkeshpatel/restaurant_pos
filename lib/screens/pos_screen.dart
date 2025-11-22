@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/menu_item.dart';
 import '../models/menu_category.dart';
@@ -15,12 +16,16 @@ class POSScreen extends StatefulWidget {
   final Function(ThemeData) onThemeChange;
   final Floor? floor;
   final table_model.TableModel? table;
+  final int? orderId; // Order ID from reserve_table response
+  final String? orderTicketId; // Order Ticket ID from reserve_table response
 
   const POSScreen({
     super.key,
     required this.onThemeChange,
     this.floor,
     this.table,
+    this.orderId,
+    this.orderTicketId,
   });
 
   @override
@@ -36,6 +41,9 @@ class _POSScreenState extends State<POSScreen> {
   String? _menuError;
   List<MenuCategory> _allCategories = [];
   MenuCategory? _selectedCategory;
+  int? _orderId; // Store order_id from reserve_table response
+  String? _orderTicketId; // Store order_ticket_id from reserve_table response
+  bool _isSendingToKitchen = false;
 
   @override
   void initState() {
@@ -48,6 +56,29 @@ class _POSScreenState extends State<POSScreen> {
     });
     _startTimer();
     _loadMenu();
+    _loadOrderId();
+  }
+
+  void _loadOrderId() {
+    // Get order_id and order_ticket_id from widget if passed
+    // IMPORTANT: Always prefer widget.orderTicketId (from reserve_table API response)
+    // This ensures we use order_ticket_id (ORD-20251121-XJROYU), NOT order_ticket_title (20251121-01T1)
+    setState(() {
+      // Get orderId from widget parameter or from table model (from get-tables API)
+      _orderId = widget.orderId ?? widget.table?.orderId;
+      // Use widget.orderTicketId first (directly from API response), 
+      // only fallback to table.orderTicketId if not provided
+      _orderTicketId = widget.orderTicketId ?? widget.table?.orderTicketId;
+      
+      // Debug log
+      print('_loadOrderId: widget.orderId = ${widget.orderId}');
+      print('_loadOrderId: widget.table?.orderId = ${widget.table?.orderId}');
+      print('_loadOrderId: widget.orderTicketId = ${widget.orderTicketId}');
+      print('_loadOrderId: widget.table?.orderTicketId = ${widget.table?.orderTicketId}');
+      print('_loadOrderId: widget.table?.orderTicketTitle = ${widget.table?.orderTicketTitle}');
+      print('_loadOrderId: Final _orderId = $_orderId');
+      print('_loadOrderId: Final _orderTicketId = $_orderTicketId');
+    });
   }
 
   String _formatOrderStart(DateTime dateTime) {
@@ -159,21 +190,22 @@ class _POSScreenState extends State<POSScreen> {
     final targetIndex = customerIndex == -1 ? selectedCustomerIndex : customerIndex;
     
     setState(() {
-      // Check if item already exists in customer's order
+      // Check if item already exists in customer's order (with same menu_item_id)
       final existingItemIndex = customers[targetIndex].items.indexWhere(
-        (orderItem) => orderItem.name == item.name,
+        (orderItem) => orderItem.menuItemId == item.id,
       );
       
       if (existingItemIndex >= 0) {
         // Increase quantity if item exists
         customers[targetIndex].items[existingItemIndex].quantity++;
       } else {
-        // Add new item
+        // Add new item with menu_item_id
         customers[targetIndex].items.add(OrderItem(
           name: item.name,
           price: item.price,
           icon: Icons.restaurant_menu,
           addedTime: DateTime.now(),
+          menuItemId: item.id,
           quantity: 1,
         ));
       }
@@ -202,13 +234,229 @@ class _POSScreenState extends State<POSScreen> {
     });
   }
 
-  void _sendToKitchen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => KitchenStatusScreen(onThemeChange: widget.onThemeChange),
-      ),
-    );
+  Future<void> _sendToKitchen() async {
+    // Check if we have order_id and order_ticket_id
+    // IMPORTANT: Use order_ticket_id (ORD-20251121-XJROYU), NOT order_ticket_title (20251121-01T1)
+    // _orderTicketId should contain the actual ID from reserve_table response
+    // widget.table?.orderTicketId should also contain the ID (not title)
+    
+    // CRITICAL: Use _orderTicketId which comes from reserve_table API response
+    // This should be "ORD-20251121-XJROYU" (the ID), NOT "20251121-01T1" (the title)
+    final orderTicketId = _orderTicketId ?? widget.table?.orderTicketId;
+    final orderTicketTitle = widget.table?.orderTicketTitle;
+    
+    // Debug: Log what we have
+    print('========================================');
+    print('DEBUG: Order Ticket Values:');
+    print('_orderTicketId (from widget param - SHOULD BE ID like ORD-20251121-XJROYU): $_orderTicketId');
+    print('widget.table?.orderTicketId (from table - SHOULD BE ID): ${widget.table?.orderTicketId}');
+    print('widget.table?.orderTicketTitle (TITLE - DO NOT USE IN API - for display only): $orderTicketTitle');
+    print('Final orderTicketId being used for API: $orderTicketId');
+    
+    // CRITICAL CHECK: Verify we're using ID format (starts with "ORD-"), not title format
+    if (orderTicketId != null && !orderTicketId.startsWith('ORD-')) {
+      print('❌ ERROR: orderTicketId does not start with "ORD-" - this looks like a TITLE!');
+      print('Expected format: ORD-20251121-XJROYU (the ID)');
+      print('Got: $orderTicketId (this looks like the title: $orderTicketTitle)');
+      print('You MUST use order_ticket_id (ORD-20251121-XJROYU), NOT order_ticket_title (20251121-01T1)');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('ERROR: Invalid order ticket ID format. Expected format: ORD-20251121-XXXXX\nGot: $orderTicketId'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+    
+    // Verify we're not accidentally using the title
+    if (orderTicketId == orderTicketTitle) {
+      print('❌ WARNING: orderTicketId matches orderTicketTitle - this is WRONG!');
+      print('You are using the TITLE instead of the ID!');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ERROR: Using order ticket title instead of ID. The ID should start with "ORD-".'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+    print('========================================');
+    
+    if (orderTicketId == null || orderTicketId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order Ticket ID not found. Please ensure the table is reserved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    if (_orderId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order ID not found. Please ensure the table is reserved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Collect all items from all customers
+    final List<Map<String, dynamic>> itemsToSend = [];
+    
+    for (final customer in customers) {
+      for (final orderItem in customer.items) {
+        // Convert each order item to API format
+        final itemData = {
+          'menu_item_id': orderItem.menuItemId,
+          'qty': orderItem.quantity,
+          'unit_price': orderItem.price,
+          if (orderItem.instructions != null && orderItem.instructions!.isNotEmpty)
+            'instructions': orderItem.instructions,
+          if (orderItem.decisionIds != null && orderItem.decisionIds!.isNotEmpty)
+            'decisions': orderItem.decisionIds!.map((id) => {'decision_id': id}).toList(),
+          if (orderItem.modifiers != null && orderItem.modifiers!.isNotEmpty)
+            'modifiers': orderItem.modifiers,
+        };
+        itemsToSend.add(itemData);
+      }
+    }
+
+    if (itemsToSend.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No items to send to kitchen'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSendingToKitchen = true;
+    });
+
+    // Debug: Print items being sent
+    print('========================================');
+    print('Sending to Kitchen - Items Summary:');
+    print('✅ Order Ticket ID (should be like ORD-20251121-XJROYU): $orderTicketId');
+    print('❌ Order Ticket TITLE (NOT USED - just for display): ${widget.table?.orderTicketTitle}');
+    print('Order ID: $_orderId');
+    print('Total Items: ${itemsToSend.length}');
+    for (var i = 0; i < itemsToSend.length; i++) {
+      print('Item ${i + 1}: ${itemsToSend[i]}');
+    }
+    print('========================================');
+
+    // Verify we're using ID, not title
+    if (orderTicketId == widget.table?.orderTicketTitle) {
+      print('⚠️ ERROR: Using TITLE instead of ID! This is WRONG!');
+      print('You must use order_ticket_id (ORD-20251121-XJROYU), not order_ticket_title (20251121-01T1)');
+    }
+
+    try {
+      // Create formatted request body for debugging
+      final requestBody = {
+        'order_ticket_id': orderTicketId, // MUST be ORD-20251121-XJROYU, NOT 20251121-01T1
+        'order_id': _orderId,
+        'items': itemsToSend,
+      };
+      
+      // Print formatted JSON for debugging
+      final formattedJson = const JsonEncoder.withIndent('  ').convert(requestBody);
+      final rawJson = jsonEncode(requestBody);
+      
+      print('========================================');
+      print('📤 PREPARING REQUEST TO: /api/pos/order/send');
+      print('========================================');
+      print('📋 REQUEST DETAILS:');
+      print('   order_ticket_id: $orderTicketId');
+      print('   order_id: $_orderId');
+      print('   items count: ${itemsToSend.length}');
+      print('');
+      print('📦 FULL REQUEST BODY (Formatted):');
+      print(formattedJson);
+      print('');
+      print('📦 FULL REQUEST BODY (Raw JSON - for copy/paste to Postman):');
+      print(rawJson);
+      print('');
+      print('⚠️ VERIFY: order_ticket_id should be like "ORD-20251121-XJROYU"');
+      print('⚠️ VERIFY: order_ticket_id should NOT be like "20251121-01T1" (that is the title!)');
+      print('========================================');
+      print('');
+
+      final response = await ApiService.sendOrder(
+        orderTicketId: orderTicketId,
+        orderId: _orderId!,
+        items: itemsToSend,
+      );
+
+      if (!mounted) return;
+      
+      // Log response
+      print('========================================');
+      print('RESPONSE STATUS: ${response.success ? "SUCCESS" : "FAILED"}');
+      print('RESPONSE MESSAGE: ${response.message}');
+      if (response.data != null) {
+        print('RESPONSE DATA: ${const JsonEncoder.withIndent('  ').convert(response.data)}');
+      }
+      print('========================================');
+
+      if (response.success) {
+        final data = response.data;
+        final newItemsCount = data?['new_items_count'] ?? 0;
+        
+        if (newItemsCount == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All items already sent to kitchen'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Successfully sent ${newItemsCount} item(s) to kitchen'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Optionally navigate to kitchen status screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => KitchenStatusScreen(onThemeChange: widget.onThemeChange),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sending order: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSendingToKitchen = false;
+        });
+      }
+    }
   }
 
   void _showSettings() {
@@ -815,7 +1063,7 @@ class _POSScreenState extends State<POSScreen> {
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(
-                        onPressed: allCustomersTotal == 0 ? null : _sendToKitchen,
+                        onPressed: (allCustomersTotal == 0 || _isSendingToKitchen) ? null : _sendToKitchen,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue.shade600,
                           foregroundColor: Colors.white,
@@ -827,13 +1075,22 @@ class _POSScreenState extends State<POSScreen> {
                           ),
                           elevation: 2,
                         ),
-                        child: Text(
-                          'Send Kitchen',
-                          style: TextStyle(
-                            fontSize: isMobile ? 14 : 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _isSendingToKitchen
+                            ? SizedBox(
+                                height: isMobile ? 18 : 20,
+                                width: isMobile ? 18 : 20,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Send Kitchen',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 14 : 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],
