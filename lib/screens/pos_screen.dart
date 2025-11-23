@@ -271,29 +271,60 @@ class _POSScreenState extends State<POSScreen> {
                 continue;
               }
               
-              // Get menu item details
-              final menuItem = menuItemsMap[menuItemId];
-              String itemName = 'Item #$menuItemId';
+              // Get menu item details - prioritize getting name from API response
+              String itemName = '';
               double itemPrice = unitPrice;
               
-              if (menuItem != null) {
-                itemName = menuItem.name;
-                // Use unit_price from order_item if available, otherwise use menu item price
-                if (unitPrice <= 0) {
-                  itemPrice = menuItem.price;
+              // First, try to get name from order_item's menu_item relationship (if API includes it)
+              if (orderItemData['menu_item'] != null) {
+                final menuItemData = orderItemData['menu_item'] as Map<String, dynamic>?;
+                itemName = menuItemData?['name'] as String? ?? '';
+              }
+              
+              // If not found in API response, try from loaded menu map
+              if (itemName.isEmpty) {
+                final menuItem = menuItemsMap[menuItemId];
+                if (menuItem != null) {
+                  itemName = menuItem.name;
+                  // Use unit_price from order_item if available, otherwise use menu item price
+                  if (unitPrice <= 0) {
+                    itemPrice = menuItem.price;
+                  }
                 }
-              } else {
-                print('_loadExistingOrderItems: Menu item not found for id: $menuItemId');
-                // Try to get name from order_item if it has menu_item relationship
-                if (orderItemData['menu_item'] != null) {
-                  final menuItemData = orderItemData['menu_item'] as Map<String, dynamic>?;
-                  itemName = menuItemData?['name'] as String? ?? itemName;
+              }
+              
+              // If still no name found, reload menu and try again, or use a descriptive fallback
+              if (itemName.isEmpty) {
+                print('_loadExistingOrderItems: Menu item name not found for id: $menuItemId, reloading menu...');
+                // Reload menu to ensure we have latest data
+                final menuResponseRetry = await ApiService.getMenu();
+                if (menuResponseRetry.success && menuResponseRetry.data != null) {
+                  for (var menu in menuResponseRetry.data!.menus) {
+                    for (var category in menu.categories) {
+                      for (var item in category.menuItems) {
+                        if (item.id == menuItemId) {
+                          itemName = item.name;
+                          if (unitPrice <= 0) {
+                            itemPrice = item.price;
+                          }
+                          break;
+                        }
+                      }
+                    }
+                  }
                 }
-                // If unit_price is 0, we can't determine price, skip this item
-                if (unitPrice <= 0) {
-                  print('_loadExistingOrderItems: Skipping item - no price available and menu item not found');
-                  continue;
+                
+                // Last resort: use menu_item_id as fallback (but this should rarely happen)
+                if (itemName.isEmpty) {
+                  itemName = 'Menu Item #$menuItemId';
+                  print('_loadExistingOrderItems: WARNING - Using fallback name for menu_item_id: $menuItemId');
                 }
+              }
+              
+              // If unit_price is 0 and we still don't have a price, skip this item
+              if (unitPrice <= 0 && itemPrice <= 0) {
+                print('_loadExistingOrderItems: Skipping item - no price available');
+                continue;
               }
               
               if (customerNo >= 1 && customerNo <= customers.length) {
@@ -866,8 +897,8 @@ class _POSScreenState extends State<POSScreen> {
         ),
       ),
       child: Container(
-        margin: EdgeInsets.only(bottom: isMobile ? 6 : 8),
-        padding: EdgeInsets.all(isMobile ? 10 : 12),
+        margin: EdgeInsets.only(bottom: isMobile ? 8 : 10),
+        padding: EdgeInsets.all(isMobile ? 12 : 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -884,69 +915,89 @@ class _POSScreenState extends State<POSScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Product Name - Full width, larger text
             Row(
               children: [
-                Icon(Icons.drag_handle, color: color, size: isMobile ? 18 : 20),
-                SizedBox(width: isMobile ? 8 : 12),
-                Icon(item.icon, color: color, size: isMobile ? 18 : 20),
-                SizedBox(width: isMobile ? 8 : 12),
+                Icon(Icons.drag_handle, color: color, size: isMobile ? 16 : 18),
+                SizedBox(width: isMobile ? 6 : 8),
+                Icon(item.icon, color: color, size: isMobile ? 20 : 22),
+                SizedBox(width: isMobile ? 8 : 10),
                 Expanded(
                   child: Text(
                     item.name,
                     style: TextStyle(
-                      fontSize: isMobile ? 13 : 15,
-                      fontWeight: FontWeight.w600,
+                      fontSize: isMobile ? 15 : 17,
+                      fontWeight: FontWeight.w700,
                       color: Colors.black87,
+                      height: 1.2,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                // Priority badge
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isMobile ? 6 : 8,
-                    vertical: isMobile ? 2 : 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Priority ${item.priority}',
-                    style: TextStyle(
-                      fontSize: isMobile ? 10 : 11,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.visible,
                   ),
                 ),
               ],
             ),
-            SizedBox(height: isMobile ? 6 : 8),
+            SizedBox(height: isMobile ? 8 : 10),
+            // Details Row: Quantity, Priority Number, Timer
             Row(
               children: [
+                // Quantity
+                if (item.quantity > 1)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 6 : 8,
+                      vertical: isMobile ? 3 : 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${item.quantity}x',
+                          style: TextStyle(
+                            fontSize: isMobile ? 11 : 12,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (item.quantity > 1) SizedBox(width: isMobile ? 6 : 8),
+                // Priority Number (without "Priority" text)
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 8 : 10,
+                    vertical: isMobile ? 3 : 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${item.priority}',
+                    style: TextStyle(
+                      fontSize: isMobile ? 12 : 13,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ),
+                Spacer(),
                 // Timer
                 Icon(Icons.timer, size: isMobile ? 14 : 16, color: Colors.grey.shade600),
                 SizedBox(width: 4),
                 Text(
                   item.elapsedTimeString,
                   style: TextStyle(
-                    fontSize: isMobile ? 11 : 12,
+                    fontSize: isMobile ? 12 : 13,
                     color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (item.quantity > 1) ...[
-                  SizedBox(width: isMobile ? 12 : 16),
-                  Text(
-                    'Qty: ${item.quantity}',
-                    style: TextStyle(
-                      fontSize: isMobile ? 11 : 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
               ],
             ),
             // Progress bar based on elapsed time (visual indicator)
