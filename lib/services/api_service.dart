@@ -253,7 +253,7 @@ class ApiService {
     required int tableId,
     required String gratuityType,
     double? gratuityValue,
-    int? guestCount,
+    int? customer,
     String? orderNotes,
   }) async {
     try {
@@ -271,8 +271,8 @@ class ApiService {
         'table_id': tableId,
         'gratuity_type': gratuityType,
         'gratuity_value': gratuityValue ?? 0,
+        'customer': customer ?? 1,
         'order_notes': orderNotes ?? '',
-        if (guestCount != null) 'guest_count': guestCount,
       };
 
       final response = await http.post(

@@ -141,6 +141,9 @@ class _TableSelectionScreenState extends State<TableSelectionScreen> {
           SnackBar(content: Text(response.message ?? 'Table reserved successfully')),
         );
 
+        // Get customer count from order in response
+        final customerCount = response.order?['customer'] as int? ?? 1;
+        
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -481,10 +484,10 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
   String _gratuityType = 'percentage';
   final TextEditingController _gratuityValueController = TextEditingController(text: '10');
   final TextEditingController _notesController = TextEditingController();
-  int _selectedGuests = 2;
+  int _selectedCustomers = 1;
   bool _isSubmitting = false;
 
-  List<int> get _guestOptions => List.generate(12, (index) => index + 1);
+  List<int> get _customerOptions => List.generate(20, (index) => index + 1);
 
   @override
   void dispose() {
@@ -512,6 +515,19 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
   }
 
   Future<void> _submit() async {
+    // Validate customer count against table capacity
+    final tableCapacity = widget.table.capacity ?? 0;
+    if (_selectedCustomers > tableCapacity) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Number of customers ($_selectedCustomers) exceeds table capacity ($tableCapacity). Please merge tables to accommodate more customers.'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     if (_applyManualGratuity) {
       final parsedValue = double.tryParse(_gratuityValueController.text);
       if (parsedValue == null) {
@@ -538,11 +554,8 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
       tableId: widget.table.id,
       gratuityType: gratuityType,
       gratuityValue: gratuityValue,
-      guestCount: _selectedGuests,
-      orderNotes: [
-        'Guests: $_selectedGuests',
-        if (notes.isNotEmpty) notes,
-      ].join(notes.isNotEmpty ? ' - ' : ''),
+      customer: _selectedCustomers,
+      orderNotes: notes,
     );
 
     if (!mounted) return;
@@ -588,8 +601,17 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
                     ),
                   ),
                   Text(
-                    'Select Number of Guests',
+                    'Select Number of Customers',
                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Table Capacity: ${widget.table.capacity ?? 0}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: _selectedCustomers > (widget.table.capacity ?? 0) 
+                          ? Colors.orange 
+                          : Colors.grey,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _buildSwitchRow(
@@ -717,6 +739,7 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
   }
 
   Widget _buildGuestGrid(ThemeData theme) {
+    final tableCapacity = widget.table.capacity ?? 0;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -726,24 +749,29 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
         crossAxisSpacing: 12,
         childAspectRatio: 1.3,
       ),
-      itemCount: _guestOptions.length,
+      itemCount: _customerOptions.length,
       itemBuilder: (context, index) {
-        final value = _guestOptions[index];
-        final isSelected = value == _selectedGuests;
+        final value = _customerOptions[index];
+        final isSelected = value == _selectedCustomers;
+        final exceedsCapacity = value > tableCapacity;
         return GestureDetector(
           onTap: () {
             if (_isSubmitting) return;
             setState(() {
-              _selectedGuests = value;
+              _selectedCustomers = value;
             });
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
-              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant,
+              color: exceedsCapacity 
+                  ? Colors.orange.shade100
+                  : (isSelected ? theme.colorScheme.primary : theme.colorScheme.surfaceVariant),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? theme.colorScheme.primary : Colors.grey.shade300,
+                color: exceedsCapacity
+                    ? Colors.orange
+                    : (isSelected ? theme.colorScheme.primary : Colors.grey.shade300),
                 width: 2,
               ),
               boxShadow: isSelected
@@ -757,13 +785,29 @@ class _ReservationBottomSheetState extends State<ReservationBottomSheet> {
                   : null,
             ),
             alignment: Alignment.center,
-            child: Text(
-              value.toString(),
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.black87,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value.toString(),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: exceedsCapacity
+                        ? Colors.orange.shade900
+                        : (isSelected ? Colors.white : Colors.black87),
+                  ),
+                ),
+                if (exceedsCapacity && tableCapacity > 0)
+                  Text(
+                    '> $tableCapacity',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.orange.shade900,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
             ),
           ),
         );

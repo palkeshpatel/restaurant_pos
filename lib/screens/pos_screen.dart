@@ -50,6 +50,8 @@ class _POSScreenState extends State<POSScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize with default 1 customer, will be updated when order is loaded
+    _initializeCustomers(1);
     _orderStartTime = DateTime.now();
     _searchController.addListener(() {
       setState(() {
@@ -135,6 +137,15 @@ class _POSScreenState extends State<POSScreen> {
         
         print('_loadExistingOrderItems: orderData is null: ${orderData == null}');
         if (orderData != null) {
+          // Get customer count from order data and initialize customers dynamically
+          final customerCount = orderData['customer'] as int? ?? 1;
+          print('_loadExistingOrderItems: Customer count from order: $customerCount');
+          if (mounted) {
+            setState(() {
+              _initializeCustomers(customerCount);
+            });
+          }
+          
           print('_loadExistingOrderItems: orderData keys: ${orderData.keys}');
           print('_loadExistingOrderItems: orderData has checks: ${orderData.containsKey('checks')}');
           
@@ -165,11 +176,16 @@ class _POSScreenState extends State<POSScreen> {
           
           print('_loadExistingOrderItems: Total items found: ${allOrderItems.length}');
           
+          // Always clear existing items, even if no items found
+          if (mounted) {
+            setState(() {
+              for (var customer in customers) {
+                customer.items.clear();
+              }
+            });
+          }
+          
           if (allOrderItems.isNotEmpty) {
-            // Clear existing items first
-            for (var customer in customers) {
-              customer.items.clear();
-            }
 
             // Load menu to get item names and prices
             final menuResponse = await ApiService.getMenu();
@@ -425,12 +441,15 @@ class _POSScreenState extends State<POSScreen> {
   }
 
 
-  // Multiple customers
-  List<Customer> customers = [
-    Customer(id: '1', name: 'Cust 1'),
-    Customer(id: '2', name: 'Cust 2'),
-    Customer(id: '3', name: 'Cust 3'),
-  ];
+  // Multiple customers - dynamically created based on order.customer
+  late List<Customer> customers;
+  
+  void _initializeCustomers(int customerCount) {
+    customers = List.generate(
+      customerCount,
+      (index) => Customer(id: '${index + 1}', name: 'Cust ${index + 1}'),
+    );
+  }
   
   int selectedCustomerIndex = 0;
   
