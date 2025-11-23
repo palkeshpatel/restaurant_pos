@@ -209,7 +209,6 @@ class _POSScreenState extends State<POSScreen> {
               
               // Get the unique ID from database - if it exists, item is saved
               final orderItemId = orderItemData['id'] as int?;
-              final status = orderItemData['status'] as String? ?? 'pending';
               
               // Get fire_status from API response (0 = hold, 1 = fire)
               bool fireStatus = false;
@@ -248,7 +247,7 @@ class _POSScreenState extends State<POSScreen> {
                 sentCount++; // Count saved items
               }
               
-              print('_loadExistingOrderItems: menu_item_id: $menuItemId, customer_no: $customerNo, qty: $qty, unit_price: $unitPrice, orderItemId: $orderItemId, status: $status');
+              print('_loadExistingOrderItems: menu_item_id: $menuItemId, customer_no: $customerNo, qty: $qty, unit_price: $unitPrice, orderItemId: $orderItemId, fireStatus: $fireStatus');
               
               if (menuItemId == null) {
                 print('_loadExistingOrderItems: Skipping item - no menu_item_id');
@@ -311,7 +310,7 @@ class _POSScreenState extends State<POSScreen> {
                     createdAt: createdAt, // Store created_at timestamp
                   ));
                   loadedCount++;
-                  print('_loadExistingOrderItems: Added item: $itemName (₹$itemPrice x $qty) to customer $customerNo - OrderItemID: $dbOrderItemId, Status: $status');
+                  print('_loadExistingOrderItems: Added item: $itemName (₹$itemPrice x $qty) to customer $customerNo - OrderItemID: $dbOrderItemId, FireStatus: ${fireStatus ? "Fire" : "Hold"}');
                 }
               } else {
                 print('_loadExistingOrderItems: Invalid customer_no: $customerNo (must be 1-${customers.length})');
@@ -2259,21 +2258,21 @@ class _POSScreenState extends State<POSScreen> {
                                                                 color: Colors.green.shade100,
                                                                 borderRadius: BorderRadius.circular(8),
                                                               ),
-                                                              child: Row(
+                                                              child:                                                               Row(
                                                                 mainAxisSize: MainAxisSize.min,
                                                                 children: [
                                                                   Icon(
-                                                                    Icons.check_circle,
+                                                                    item.fireStatus ? Icons.local_fire_department : Icons.pause_circle,
                                                                     size: 12,
-                                                                    color: Colors.green.shade700,
+                                                                    color: item.fireStatus ? Colors.orange.shade700 : Colors.blue.shade700,
                                                                   ),
                                                                   SizedBox(width: 4),
                                                                   Text(
-                                                                    'Sent',
+                                                                    item.fireStatus ? 'Fire' : 'Hold',
                                                                     style: TextStyle(
                                                                       fontSize: 10,
                                                                       fontWeight: FontWeight.w600,
-                                                                      color: Colors.green.shade700,
+                                                                      color: item.fireStatus ? Colors.orange.shade700 : Colors.blue.shade700,
                                                                     ),
                                                                   ),
                                                                 ],
@@ -2383,86 +2382,6 @@ class _POSScreenState extends State<POSScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Show status in a bottom sheet (works for both mobile and desktop)
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (context) => Container(
-                              height: MediaQuery.of(context).size.height * (isMobile ? 0.9 : 0.8),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(20),
-                                  topRight: Radius.circular(20),
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  // Header
-                                  Container(
-                                    padding: EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(color: Colors.grey.shade300),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.assessment,
-                                          color: Theme.of(context).colorScheme.primary,
-                                          size: 24,
-                                        ),
-                                        SizedBox(width: 12),
-                                        Text(
-                                          'Order Status',
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w600,
-                                            color: Theme.of(context).colorScheme.primary,
-                                          ),
-                                        ),
-                                        Spacer(),
-                                        IconButton(
-                                          icon: Icon(Icons.close),
-                                          onPressed: () => Navigator.pop(context),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Status content
-                                  Expanded(
-                                    child: _buildStatusSection(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icon(
-                          Icons.assessment,
-                          size: isMobile ? 18 : 20,
-                        ),
-                        label: Text(
-                          'Status',
-                          style: TextStyle(fontSize: isMobile ? 14 : 16),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade600,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 2,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
                         onPressed: allCustomersTotal == 0 ? null : _openPaymentScreen,
                         icon: Icon(
                           Icons.receipt_long,
@@ -2521,30 +2440,6 @@ class _POSScreenState extends State<POSScreen> {
                     ),
                   ],
                 ),
-                // Fire Items Button
-                if (holdCount > 0) ...[
-                  SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: _fireItems,
-                    icon: Icon(Icons.local_fire_department, size: isMobile ? 20 : 24),
-                    label: Text(
-                      'Fire Items ($holdCount on hold)',
-                      style: TextStyle(
-                        fontSize: isMobile ? 14 : 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade600,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14, horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 2,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -2919,6 +2814,101 @@ class _POSScreenState extends State<POSScreen> {
               // Call API to fire the item
               _fireItems();
             },
+            onHoldLongPress: () {
+              // Long press on Hold box - fire all hold items
+              if (holdCount > 0) {
+                _fireItems();
+              }
+            },
+          ),
+          // Status Button
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.3)),
+              ),
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // Show status in a bottom sheet (works for both mobile and desktop)
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => Container(
+                      height: MediaQuery.of(context).size.height * 0.8,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // Header
+                          Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.assessment,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 24,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Order Status',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                                Spacer(),
+                                IconButton(
+                                  icon: Icon(Icons.close),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Status content
+                          Expanded(
+                            child: _buildStatusSection(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                icon: Icon(
+                  Icons.assessment,
+                  size: 20,
+                ),
+                label: Text(
+                  'Status',
+                  style: TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade600,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
           ),
         ],
       ),

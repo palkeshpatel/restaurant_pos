@@ -8,6 +8,7 @@ class StatusCountWidget extends StatefulWidget {
   final List<OrderItem>? holdItems;
   final List<OrderItem>? fireItems;
   final Function(OrderItem)? onItemMovedToFire;
+  final VoidCallback? onHoldLongPress; // Callback when Hold box is long-pressed
 
   const StatusCountWidget({
     super.key,
@@ -16,6 +17,7 @@ class StatusCountWidget extends StatefulWidget {
     this.holdItems,
     this.fireItems,
     this.onItemMovedToFire,
+    this.onHoldLongPress,
   });
 
   @override
@@ -25,6 +27,7 @@ class StatusCountWidget extends StatefulWidget {
 class _StatusCountWidgetState extends State<StatusCountWidget>
     with SingleTickerProviderStateMixin {
   bool _showExplosion = false;
+  bool _isHoldLongPressing = false;
   late AnimationController _explosionController;
   late Animation<double> _explosionAnimation;
 
@@ -120,15 +123,48 @@ class _StatusCountWidgetState extends State<StatusCountWidget>
     IconData icon,
     List<OrderItem> items,
   ) {
-    return DragTarget<OrderItem>(
-      onAccept: (item) {
-        // Item was dropped here, but we want to prevent dropping on Hold
-        // This is just for visual feedback
+    return GestureDetector(
+      onLongPressStart: (_) {
+        // Start long press - show visual feedback
+        if (count > 0) {
+          setState(() {
+            _isHoldLongPressing = true;
+          });
+        }
       },
-      onWillAccept: (data) => false, // Don't accept drops on Hold
-      builder: (context, candidateData, rejectedData) {
-        return _buildStatusCountCard(label, count, color, icon, items, isDraggable: true);
+      onLongPressEnd: (_) {
+        // End long press - fire all hold items
+        setState(() {
+          _isHoldLongPressing = false;
+        });
+        if (widget.onHoldLongPress != null && count > 0) {
+          widget.onHoldLongPress!();
+        }
       },
+      onLongPressCancel: () {
+        // Cancel long press
+        setState(() {
+          _isHoldLongPressing = false;
+        });
+      },
+      child: DragTarget<OrderItem>(
+        onAccept: (item) {
+          // Item was dropped here, but we want to prevent dropping on Hold
+          // This is just for visual feedback
+        },
+        onWillAccept: (data) => false, // Don't accept drops on Hold
+        builder: (context, candidateData, rejectedData) {
+          return _buildStatusCountCard(
+            label, 
+            count, 
+            color, 
+            icon, 
+            items, 
+            isDraggable: true,
+            isLongPressing: _isHoldLongPressing,
+          );
+        },
+      ),
     );
   }
 
@@ -173,21 +209,24 @@ class _StatusCountWidgetState extends State<StatusCountWidget>
     bool isDraggable = false,
     bool isDropTarget = false,
     bool isHighlighted = false,
+    bool isLongPressing = false,
   }) {
-    return Card(
-      elevation: isHighlighted ? 8 : 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isHighlighted
-            ? BorderSide(color: color, width: 3)
-            : BorderSide.none,
-      ),
-      child: Container(
-        decoration: BoxDecoration(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: Card(
+        elevation: (isHighlighted || isLongPressing) ? 8 : 3,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          color: isHighlighted ? color.withOpacity(0.1) : null,
+          side: (isHighlighted || isLongPressing)
+              ? BorderSide(color: color, width: 3)
+              : BorderSide.none,
         ),
-        child: Padding(
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: (isHighlighted || isLongPressing) ? color.withOpacity(0.2) : null,
+          ),
+          child: Padding(
           padding: const EdgeInsets.all(15),
           child: Column(
             children: [
@@ -197,16 +236,16 @@ class _StatusCountWidgetState extends State<StatusCountWidget>
                   Icon(
                     icon,
                     color: color,
-                    size: 24,
+                    size: 48,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         count.toString(),
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 32,
                           fontWeight: FontWeight.bold,
                           color: color,
                         ),
@@ -215,9 +254,9 @@ class _StatusCountWidgetState extends State<StatusCountWidget>
                       Text(
                         label,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 16,
                           color: Colors.grey.shade700,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
@@ -304,6 +343,7 @@ class _StatusCountWidgetState extends State<StatusCountWidget>
             ],
           ),
         ),
+      ),
       ),
     );
   }
