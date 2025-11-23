@@ -1522,7 +1522,10 @@ class _POSScreenState extends State<POSScreen> {
           }
         }
         
+        // Note: newItemsCount should always be > 0 if we have items to send
+        // because frontend only sends items without orderItemId (new/temporary items)
         if (newItemsCount == 0) {
+          // This should rarely happen, but handle it gracefully
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
@@ -1530,7 +1533,7 @@ class _POSScreenState extends State<POSScreen> {
                   Icon(Icons.info_outline, color: Colors.white),
                   SizedBox(width: 12),
                   Expanded(
-                    child: Text('All items already sent to kitchen'),
+                    child: Text('No new items to send. All items are already saved.'),
                   ),
                 ],
               ),
