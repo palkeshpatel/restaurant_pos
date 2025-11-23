@@ -45,6 +45,7 @@ class _POSScreenState extends State<POSScreen> {
   int? _orderId; // Store order_id from reserve_table response
   String? _orderTicketId; // Store order_ticket_id from reserve_table response
   bool _isSendingToKitchen = false;
+  bool _isOrderPaid = false; // Track if order is paid
 
   @override
   void initState() {
@@ -323,6 +324,9 @@ class _POSScreenState extends State<POSScreen> {
               setState(() {
                 // Update order ID if not already set
                 _orderId = orderData['id'] as int? ?? _orderId;
+                // Check if order is paid/completed
+                final orderStatus = orderData['status'] as String?;
+                _isOrderPaid = orderStatus == 'completed' || orderStatus == 'paid';
               });
               
               if (sentCount > 0) {
@@ -972,6 +976,17 @@ class _POSScreenState extends State<POSScreen> {
   }
 
   void _addToOrder(MenuItem item, {int customerIndex = -1}) {
+    // Prevent adding items if order is paid
+    if (_isOrderPaid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot add items. Order is already paid.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     final targetIndex = customerIndex == -1 ? selectedCustomerIndex : customerIndex;
     
     setState(() {
@@ -1092,15 +1107,18 @@ class _POSScreenState extends State<POSScreen> {
       ),
     ).then((result) {
       // Handle payment result if needed
-      if (result != null && result['success'] == true) {
+      if (result != null && result['success'] == true && result['paid'] == true) {
+        setState(() {
+          _isOrderPaid = true; // Mark order as paid
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment processed successfully: ${result['payment_method']}'),
+            content: Text('Payment processed successfully: ${result['type'] ?? result['payment_method']}'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
         );
-        // TODO: Update order status, clear items, or navigate back
+        // Optionally navigate back or show message
       }
     });
   }
@@ -2382,7 +2400,7 @@ class _POSScreenState extends State<POSScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: allCustomersTotal == 0 ? null : _openPaymentScreen,
+                        onPressed: (allCustomersTotal == 0 || _isOrderPaid) ? null : _openPaymentScreen,
                         icon: Icon(
                           Icons.receipt_long,
                           size: isMobile ? 18 : 20,
@@ -2408,7 +2426,7 @@ class _POSScreenState extends State<POSScreen> {
                     Expanded(
                       flex: 2,
                       child: ElevatedButton(
-                        onPressed: (allCustomersTotal == 0 || _isSendingToKitchen) ? null : _sendToKitchen,
+                        onPressed: (allCustomersTotal == 0 || _isSendingToKitchen || _isOrderPaid) ? null : _sendToKitchen,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue.shade600,
                           foregroundColor: Colors.white,

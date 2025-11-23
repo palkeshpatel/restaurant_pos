@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
+import '../services/api_service.dart';
 
 class PaymentScreen extends StatefulWidget {
   final double totalAmount;
@@ -501,30 +502,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
     });
 
     try {
-      // TODO: Implement payment processing
-      // For Cash: Just mark as paid
-      // For Online: Integrate with Stripe (later)
-      
-      if (_selectedPaymentMethod == 'cash') {
-        // Process cash payment
-        await Future.delayed(Duration(seconds: 1)); // Simulate API call
-        
-        if (mounted) {
+      // Call payment API
+      final response = await ApiService.processPayment(
+        orderTicketId: widget.orderTicketId,
+        type: _selectedPaymentMethod!, // 'cash' or 'online'
+        amount: _total,
+        tipAmount: _gratuity,
+      );
+
+      if (mounted) {
+        if (response.success) {
+          // Payment successful
           Navigator.pop(context, {
             'success': true,
-            'payment_method': 'cash',
+            'payment_method': _selectedPaymentMethod,
+            'type': _selectedPaymentMethod,
             'amount': _total,
             'order_ticket_id': widget.orderTicketId,
+            'paid': true,
           });
-        }
-      } else if (_selectedPaymentMethod == 'online') {
-        // TODO: Integrate Stripe payment
-        // This will be implemented later
-        if (mounted) {
+        } else {
+          // Payment failed
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Online payment integration coming soon'),
-              backgroundColor: Colors.orange,
+              content: Text(response.message ?? 'Payment processing failed'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
             ),
           );
         }
@@ -535,6 +538,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           SnackBar(
             content: Text('Payment failed: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
           ),
         );
       }

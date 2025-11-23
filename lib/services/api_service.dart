@@ -645,4 +645,72 @@ class ApiService {
       );
     }
   }
+
+  static Future<ApiResponse<Map<String, dynamic>>> processPayment({
+    required String orderTicketId,
+    required String type, // 'cash' or 'online'
+    required double amount,
+    double tipAmount = 0.0,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: 'No token found',
+          data: null,
+        );
+      }
+
+      final url = Uri.parse('${await baseUrl}/api/pos/order/payment');
+      final body = {
+        'order_ticket_id': orderTicketId,
+        'type': type,
+        'amount': amount,
+        'tip_amount': tipAmount,
+      };
+
+      print('========================================');
+      print('💳 PROCESSING PAYMENT - API Request');
+      print('========================================');
+      print('URL: $url');
+      print('Body: ${jsonEncode(body)}');
+      print('========================================');
+
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(body),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      print('========================================');
+      print('💳 PROCESSING PAYMENT - API Response');
+      print('========================================');
+      print('Status Code: ${response.statusCode}');
+      print('Response: ${const JsonEncoder.withIndent('  ').convert(jsonResponse)}');
+      print('========================================');
+
+      if (response.statusCode == 200 && jsonResponse['success'] == true) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          message: jsonResponse['message'] ?? 'Payment processed successfully',
+          data: jsonResponse['data'] as Map<String, dynamic>?,
+        );
+      } else {
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: jsonResponse['message'] ?? 'Payment processing failed',
+          data: null,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error: ${e.toString()}',
+        data: null,
+      );
+    }
+  }
 }
