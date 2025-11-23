@@ -10,6 +10,7 @@ import '../models/table.dart' as table_model;
 import '../services/api_service.dart';
 import 'kitchen_status_screen.dart';
 import 'settings_screen.dart';
+import 'payment_screen.dart';
 import '../widgets/status_count_widget.dart';
 
 class POSScreen extends StatefulWidget {
@@ -223,6 +224,26 @@ class _POSScreenState extends State<POSScreen> {
                 }
               }
               
+              // Get sequence for priority ordering
+              int sequence = 0;
+              final sequenceValue = orderItemData['sequence'];
+              if (sequenceValue != null) {
+                if (sequenceValue is int) {
+                  sequence = sequenceValue;
+                } else if (sequenceValue is String) {
+                  sequence = int.tryParse(sequenceValue) ?? 0;
+                }
+              }
+              
+              // Get created_at timestamp
+              DateTime? createdAt;
+              final createdAtValue = orderItemData['created_at'];
+              if (createdAtValue != null) {
+                if (createdAtValue is String) {
+                  createdAt = DateTime.tryParse(createdAtValue);
+                }
+              }
+              
               if (orderItemId != null) {
                 sentCount++; // Count saved items
               }
@@ -280,12 +301,14 @@ class _POSScreenState extends State<POSScreen> {
                     name: itemName,
                     price: itemPrice,
                     icon: Icons.restaurant_menu,
-                    addedTime: DateTime.now(),
+                    addedTime: createdAt ?? DateTime.now(),
                     menuItemId: menuItemId,
                     quantity: qty,
                     instructions: instructions,
                     orderItemId: dbOrderItemId, // Store unique ID from database (null = not saved yet)
                     fireStatus: fireStatus, // Store fire_status from database
+                    sequence: sequence, // Store sequence for priority
+                    createdAt: createdAt, // Store created_at timestamp
                   ));
                   loadedCount++;
                   print('_loadExistingOrderItems: Added item: $itemName (₹$itemPrice x $qty) to customer $customerNo - OrderItemID: $dbOrderItemId, Status: $status');
@@ -440,6 +463,502 @@ class _POSScreenState extends State<POSScreen> {
     return count;
   }
 
+  List<OrderItem> _getHoldItems() {
+    List<OrderItem> items = [];
+    for (var customer in customers) {
+      for (var item in customer.items) {
+        // Debug: Check item status
+        print('_getHoldItems: Checking item "${item.name}" - isSaved: ${item.isSaved}, fireStatus: ${item.fireStatus}, orderItemId: ${item.orderItemId}');
+        if (item.isSaved && item.isOnHold) {
+          items.add(item);
+          print('_getHoldItems: Added item "${item.name}" to hold list');
+        }
+      }
+    }
+    // Sort by sequence (lower sequence = higher priority)
+    items.sort((a, b) => a.sequence.compareTo(b.sequence));
+    print('_getHoldItems: Total hold items: ${items.length}');
+    return items;
+  }
+
+  List<OrderItem> _getFireItems() {
+    List<OrderItem> items = [];
+    for (var customer in customers) {
+      for (var item in customer.items) {
+        // Debug: Check item status
+        print('_getFireItems: Checking item "${item.name}" - isSaved: ${item.isSaved}, fireStatus: ${item.fireStatus}, orderItemId: ${item.orderItemId}');
+        if (item.isSaved && item.isFired) {
+          items.add(item);
+          print('_getFireItems: Added item "${item.name}" to fire list');
+        }
+      }
+    }
+    // Sort by sequence (lower sequence = higher priority)
+    items.sort((a, b) => a.sequence.compareTo(b.sequence));
+    print('_getFireItems: Total fire items: ${items.length}');
+    return items;
+  }
+  
+  Future<void> _updateItemSequence(OrderItem item, int newSequence) async {
+    if (item.orderItemId == null) return;
+    
+    final orderTicketId = _orderTicketId ?? widget.table?.orderTicketId;
+    if (orderTicketId == null || !orderTicketId.startsWith('ORD-')) {
+      return;
+    }
+    
+    try {
+      // Call API to update sequence
+      await ApiService.updateItemSequence(
+        orderTicketId: orderTicketId,
+        orderItemId: item.orderItemId!,
+        sequence: newSequence,
+      );
+    } catch (e) {
+      print('Error updating sequence: $e');
+    }
+  }
+
+  Widget _buildStatusSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 768;
+    
+    // Use a timer to refresh the elapsed time display every second
+    return StreamBuilder<int>(
+      stream: Stream.periodic(const Duration(seconds: 1), (i) => i),
+      builder: (context, snapshot) {
+        // Get fresh items and create mutable lists for reordering
+        final holdItemsList = List<OrderItem>.from(_getHoldItems());
+        final fireItemsList = List<OrderItem>.from(_getFireItems());
+        
+        // Debug: Print item counts
+        print('_buildStatusSection: Hold items: ${holdItemsList.length}, Fire items: ${fireItemsList.length}');
+        print('_buildStatusSection: Total customers: ${customers.length}');
+        for (var i = 0; i < customers.length; i++) {
+          print('_buildStatusSection: Customer $i has ${customers[i].items.length} items');
+          for (var item in customers[i].items) {
+            print('  - Item: ${item.name}, isSaved: ${item.isSaved}, fireStatus: ${item.fireStatus}, orderItemId: ${item.orderItemId}');
+          }
+        }
+        
+        // Force rebuild to update timers
+        return Container(
+      padding: EdgeInsets.all(isMobile ? 12 : 16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Order Status',
+                style: TextStyle(
+                  fontSize: isMobile ? 20 : 24,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.refresh),
+                onPressed: () {
+                  // Reload order items when refresh is clicked
+                  _loadExistingOrderItems();
+                },
+                tooltip: 'Refresh status',
+              ),
+            ],
+          ),
+          SizedBox(height: isMobile ? 16 : 20),
+          Expanded(
+            child: Row(
+              children: [
+                // Hold Box
+                Expanded(
+                  child: _buildStatusBox(
+                    'Hold',
+                    Colors.orange.shade600,
+                    Icons.pause_circle_outline,
+                    holdItemsList,
+                    holdCount,
+                    isMobile: isMobile,
+                    isHold: true,
+                  ),
+                ),
+                SizedBox(width: isMobile ? 12 : 16),
+                // Fire Box
+                Expanded(
+                  child: _buildStatusBox(
+                    'Fire',
+                    Colors.red.shade600,
+                    Icons.local_fire_department,
+                    fireItemsList,
+                    fireCount,
+                    isMobile: isMobile,
+                    isHold: false,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusBox(
+    String title,
+    Color color,
+    IconData icon,
+    List<OrderItem> items,
+    int count, {
+    required bool isMobile,
+    required bool isHold,
+  }) {
+    return DragTarget<OrderItem>(
+      onAccept: (draggedItem) {
+        if (!isHold) {
+          // Item dropped on Fire - trigger explosion and call API
+          _triggerFireAnimation();
+          _fireItems();
+        }
+      },
+      onWillAccept: (data) => !isHold, // Only accept drops on Fire box
+      builder: (context, candidateData, rejectedData) {
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3E0),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: candidateData.isNotEmpty && !isHold
+                  ? color.withOpacity(0.8)
+                  : color.withOpacity(0.3),
+              width: candidateData.isNotEmpty && !isHold ? 3 : 2,
+            ),
+            boxShadow: candidateData.isNotEmpty && !isHold
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.5),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(isMobile ? 12 : 16),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(14),
+                    topRight: Radius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: color, size: isMobile ? 24 : 28),
+                    SizedBox(width: isMobile ? 8 : 12),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          count.toString(),
+                          style: TextStyle(
+                            fontSize: isMobile ? 28 : 36,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: isMobile ? 14 : 16,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Items List
+              Expanded(
+                child: Container(
+                  padding: EdgeInsets.all(isMobile ? 8 : 12),
+                  child: items.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                icon,
+                                size: isMobile ? 48 : 64,
+                                color: Colors.grey.withOpacity(0.3),
+                              ),
+                              SizedBox(height: isMobile ? 8 : 12),
+                              Text(
+                                candidateData.isNotEmpty && !isHold
+                                    ? 'Drop here!'
+                                    : 'No items',
+                                style: TextStyle(
+                                  color: candidateData.isNotEmpty && !isHold
+                                      ? color
+                                      : Colors.grey,
+                                  fontSize: isMobile ? 12 : 14,
+                                  fontWeight: candidateData.isNotEmpty && !isHold
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ReorderableListView.builder(
+                          itemCount: items.length,
+                          onReorder: (oldIndex, newIndex) {
+                            if (newIndex > oldIndex) {
+                              newIndex -= 1;
+                            }
+                            setState(() {
+                              final item = items.removeAt(oldIndex);
+                              items.insert(newIndex, item);
+                              
+                              // Update sequences for all items in the list
+                              for (int i = 0; i < items.length; i++) {
+                                items[i].sequence = i;
+                                // Update sequence via API for each item
+                                _updateItemSequence(items[i], i);
+                              }
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            // Use a unique key for each item
+                            final uniqueKey = item.orderItemId != null 
+                                ? '${item.orderItemId}_${item.sequence}_${index}'
+                                : 'temp_${item.menuItemId}_${index}';
+                            return _buildDraggableStatusItem(
+                              item,
+                              color,
+                              isMobile: isMobile,
+                              isHold: isHold,
+                              index: index,
+                              key: ValueKey(uniqueKey),
+                            );
+                          },
+                        ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDraggableStatusItem(
+    OrderItem item,
+    Color color, {
+    required bool isMobile,
+    required bool isHold,
+    required int index,
+    required Key key,
+  }) {
+    return Draggable<OrderItem>(
+      key: key, // Key must be on the Draggable widget for ReorderableListView
+      data: item,
+      feedback: Material(
+        elevation: 8,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 200,
+          padding: EdgeInsets.all(isMobile ? 10 : 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(item.icon, color: color, size: isMobile ? 18 : 20),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: TextStyle(
+                    fontSize: isMobile ? 12 : 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.3,
+        child: Container(
+          margin: EdgeInsets.only(bottom: isMobile ? 6 : 8),
+          padding: EdgeInsets.all(isMobile ? 10 : 12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.drag_handle, color: Colors.grey),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.name,
+                  style: TextStyle(
+                    fontSize: isMobile ? 12 : 14,
+                    color: Colors.grey,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      child: Container(
+        margin: EdgeInsets.only(bottom: isMobile ? 6 : 8),
+        padding: EdgeInsets.all(isMobile ? 10 : 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.drag_handle, color: color, size: isMobile ? 18 : 20),
+                SizedBox(width: isMobile ? 8 : 12),
+                Icon(item.icon, color: color, size: isMobile ? 18 : 20),
+                SizedBox(width: isMobile ? 8 : 12),
+                Expanded(
+                  child: Text(
+                    item.name,
+                    style: TextStyle(
+                      fontSize: isMobile ? 13 : 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                // Priority badge
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 6 : 8,
+                    vertical: isMobile ? 2 : 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Priority ${item.priority}',
+                    style: TextStyle(
+                      fontSize: isMobile ? 10 : 11,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: isMobile ? 6 : 8),
+            Row(
+              children: [
+                // Timer
+                Icon(Icons.timer, size: isMobile ? 14 : 16, color: Colors.grey.shade600),
+                SizedBox(width: 4),
+                Text(
+                  item.elapsedTimeString,
+                  style: TextStyle(
+                    fontSize: isMobile ? 11 : 12,
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (item.quantity > 1) ...[
+                  SizedBox(width: isMobile ? 12 : 16),
+                  Text(
+                    'Qty: ${item.quantity}',
+                    style: TextStyle(
+                      fontSize: isMobile ? 11 : 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            // Progress bar based on elapsed time (visual indicator)
+            SizedBox(height: isMobile ? 4 : 6),
+            LinearProgressIndicator(
+              value: (item.elapsedTime.inSeconds / 300).clamp(0.0, 1.0), // 5 minutes max
+              backgroundColor: Colors.grey.shade200,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 3,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _triggerFireAnimation() {
+    // This will be handled by the explosion animation in the widget
+    // For now, we can show a snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.local_fire_department, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Item fired! 🔥'),
+          ],
+        ),
+        backgroundColor: Colors.red.shade600,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   double get subtotal => selectedCustomer.subtotal;
   double get tax => selectedCustomer.tax;
   double get total => selectedCustomer.total;
@@ -519,6 +1038,71 @@ class _POSScreenState extends State<POSScreen> {
     setState(() {
       final item = customers[customerIndex].items[itemIndex];
       item.quantity = (item.quantity + delta).clamp(1, 999);
+    });
+  }
+
+  void _openPaymentScreen() {
+    // Check if we have order_ticket_id
+    final orderTicketId = _orderTicketId ?? widget.table?.orderTicketId;
+    
+    if (orderTicketId == null || orderTicketId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order Ticket ID not found. Please ensure the table is reserved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Collect all order items from all customers
+    final List<Map<String, dynamic>> orderItems = [];
+    for (var customer in customers) {
+      for (var item in customer.items) {
+        orderItems.add({
+          'name': item.name,
+          'price': item.price,
+          'quantity': item.quantity,
+          'menu_item_id': item.menuItemId,
+        });
+      }
+    }
+
+    if (orderItems.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No items in order to generate bill'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Navigate to payment screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PaymentScreen(
+          totalAmount: allCustomersTotal * 1.1, // Total with tax
+          orderTicketId: orderTicketId,
+          tableName: widget.table?.name,
+          orderTicketTitle: widget.table?.orderTicketTitle,
+          orderStartTime: _orderStartTime,
+          orderItems: orderItems,
+        ),
+      ),
+    ).then((result) {
+      // Handle payment result if needed
+      if (result != null && result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Payment processed successfully: ${result['payment_method']}'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        // TODO: Update order status, clear items, or navigate back
+      }
     });
   }
 
@@ -800,13 +1384,37 @@ class _POSScreenState extends State<POSScreen> {
               }
             }
             
+            // Get sequence from API response
+            int returnedSequence = 0;
+            final sequenceValue = returnedItem['sequence'];
+            if (sequenceValue != null) {
+              if (sequenceValue is int) {
+                returnedSequence = sequenceValue;
+              } else if (sequenceValue is String) {
+                returnedSequence = int.tryParse(sequenceValue) ?? 0;
+              }
+            }
+            
+            // Get created_at from API response
+            DateTime? returnedCreatedAt;
+            final createdAtValue = returnedItem['created_at'];
+            if (createdAtValue != null && createdAtValue is String) {
+              returnedCreatedAt = DateTime.tryParse(createdAtValue);
+            }
+            
             if (returnedMenuItemId == sentItem.menuItemId && returnedId != null) {
               // Update item with its database ID - this marks it as saved
               sentItem.orderItemId = returnedId;
               // Update fire_status from API response
               sentItem.fireStatus = returnedFireStatus;
+              // Update sequence from API response
+              sentItem.sequence = returnedSequence;
+              // Update created_at from API response
+              if (returnedCreatedAt != null) {
+                sentItem.createdAt = returnedCreatedAt;
+              }
               updatedAny = true;
-              print('_sendToKitchen: Updated item "${sentItem.name}" (menu_item_id: $returnedMenuItemId) with orderItemId: $returnedId, fireStatus: $returnedFireStatus (now marked as saved)');
+              print('_sendToKitchen: Updated item "${sentItem.name}" (menu_item_id: $returnedMenuItemId) with orderItemId: $returnedId, fireStatus: $returnedFireStatus, sequence: $returnedSequence (now marked as saved)');
             } else {
               print('_sendToKitchen: WARNING - Mismatch at index $i: sent menu_item_id=${sentItem.menuItemId}, returned menu_item_id=$returnedMenuItemId');
             }
@@ -846,6 +1454,24 @@ class _POSScreenState extends State<POSScreen> {
                   }
                 }
                 
+                // Get sequence from API response
+                int returnedSequence = 0;
+                final sequenceValue = returnedItem['sequence'];
+                if (sequenceValue != null) {
+                  if (sequenceValue is int) {
+                    returnedSequence = sequenceValue;
+                  } else if (sequenceValue is String) {
+                    returnedSequence = int.tryParse(sequenceValue) ?? 0;
+                  }
+                }
+                
+                // Get created_at from API response
+                DateTime? returnedCreatedAt;
+                final createdAtValue = returnedItem['created_at'];
+                if (createdAtValue != null && createdAtValue is String) {
+                  returnedCreatedAt = DateTime.tryParse(createdAtValue);
+                }
+                
                 // Match by menu_item_id, customer_no, and qty
                 if (returnedMenuItemId == sentItem.menuItemId &&
                     returnedCustomerNo == sentItemCustomerNo &&
@@ -854,8 +1480,14 @@ class _POSScreenState extends State<POSScreen> {
                   sentItem.orderItemId = returnedId;
                   // Update fire_status from API response
                   sentItem.fireStatus = returnedFireStatus;
+                  // Update sequence from API response
+                  sentItem.sequence = returnedSequence;
+                  // Update created_at from API response
+                  if (returnedCreatedAt != null) {
+                    sentItem.createdAt = returnedCreatedAt;
+                  }
                   updatedAny = true;
-                  print('_sendToKitchen: Updated item "${sentItem.name}" with ID: $returnedId, fireStatus: $returnedFireStatus (property match)');
+                  print('_sendToKitchen: Updated item "${sentItem.name}" with ID: $returnedId, fireStatus: $returnedFireStatus, sequence: $returnedSequence (property match)');
                   break;
                 }
               }
@@ -962,7 +1594,7 @@ class _POSScreenState extends State<POSScreen> {
     }
   }
 
-  Future<void> _fireItems() async {
+  Future<void> _fireItems({List<int>? specificItemIds, List<Map<String, dynamic>>? itemsSequence}) async {
     // Check if we have order_ticket_id
     final orderTicketId = _orderTicketId ?? widget.table?.orderTicketId;
     
@@ -988,8 +1620,8 @@ class _POSScreenState extends State<POSScreen> {
       return;
     }
 
-    // Check if there are any items on hold
-    if (holdCount == 0) {
+    // Check if there are any items on hold (if not firing specific items)
+    if (specificItemIds == null && holdCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('No items on hold to fire'),
@@ -1000,7 +1632,11 @@ class _POSScreenState extends State<POSScreen> {
     }
 
     try {
-      final response = await ApiService.fireItem(orderTicketId: orderTicketId);
+      final response = await ApiService.fireItem(
+        orderTicketId: orderTicketId,
+        orderItemIds: specificItemIds,
+        itemsSequence: itemsSequence,
+      );
 
       if (!mounted) return;
 
@@ -1009,13 +1645,17 @@ class _POSScreenState extends State<POSScreen> {
         final updatedItemsCount = data['updated_items_count'] as int? ?? 0;
         final orderItems = data['order_items'] as List<dynamic>? ?? [];
 
-        // Update fire_status for all order items in the response
+        // Update fire_status and sequence for all order items in the response
         if (orderItems.isNotEmpty) {
-          // Create a map of orderItemId -> fire_status from API response
+          // Create maps of orderItemId -> fire_status and sequence from API response
           final Map<int, bool> fireStatusMap = {};
+          final Map<int, int> sequenceMap = {};
+          final Map<int, DateTime?> createdAtMap = {};
+          
           for (var item in orderItems) {
             final orderItemId = item['id'] as int?;
             if (orderItemId != null) {
+              // Get fire_status
               final fireStatusValue = item['fire_status'];
               bool fireStatus = false;
               if (fireStatusValue != null) {
@@ -1028,19 +1668,49 @@ class _POSScreenState extends State<POSScreen> {
                 }
               }
               fireStatusMap[orderItemId] = fireStatus;
+              
+              // Get sequence
+              final sequenceValue = item['sequence'];
+              int sequence = 0;
+              if (sequenceValue != null) {
+                if (sequenceValue is int) {
+                  sequence = sequenceValue;
+                } else if (sequenceValue is String) {
+                  sequence = int.tryParse(sequenceValue) ?? 0;
+                }
+              }
+              sequenceMap[orderItemId] = sequence;
+              
+              // Get created_at
+              final createdAtValue = item['created_at'];
+              DateTime? createdAt;
+              if (createdAtValue != null && createdAtValue is String) {
+                createdAt = DateTime.tryParse(createdAtValue);
+              }
+              if (createdAt != null) {
+                createdAtMap[orderItemId] = createdAt;
+              }
             }
           }
 
           // Update all order items in all customers
           for (var customer in customers) {
             for (var item in customer.items) {
-              if (item.orderItemId != null && fireStatusMap.containsKey(item.orderItemId)) {
-                item.fireStatus = fireStatusMap[item.orderItemId]!;
+              if (item.orderItemId != null) {
+                if (fireStatusMap.containsKey(item.orderItemId)) {
+                  item.fireStatus = fireStatusMap[item.orderItemId]!;
+                }
+                if (sequenceMap.containsKey(item.orderItemId)) {
+                  item.sequence = sequenceMap[item.orderItemId]!;
+                }
+                if (createdAtMap.containsKey(item.orderItemId)) {
+                  item.createdAt = createdAtMap[item.orderItemId];
+                }
               }
             }
           }
 
-          setState(() {}); // Refresh UI to show updated counts
+          setState(() {}); // Refresh UI to show updated counts and timers
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1265,7 +1935,7 @@ class _POSScreenState extends State<POSScreen> {
 
   Widget _buildMobileLayout() {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Column(
         children: [
           // Tab Bar
@@ -1278,6 +1948,7 @@ class _POSScreenState extends State<POSScreen> {
               tabs: const [
                 Tab(text: 'Menu'),
                 Tab(text: 'Order'),
+                Tab(text: 'Status'),
               ],
             ),
           ),
@@ -1335,6 +2006,8 @@ class _POSScreenState extends State<POSScreen> {
                 ),
                 // Order Tab
                 _buildOrderSection(),
+                // Status Tab
+                _buildStatusSection(),
               ],
             ),
           ),
@@ -1709,46 +2382,106 @@ class _POSScreenState extends State<POSScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: allCustomersTotal == 0 ? null : () {
-                          showDialog(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // Show status in a bottom sheet (works for both mobile and desktop)
+                          showModalBottomSheet(
                             context: context,
-                            builder: (context) => AlertDialog(
-                              title: Text('Clear All Orders?'),
-                              content: Text('Are you sure you want to clear all customer orders?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text('Cancel'),
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (context) => Container(
+                              height: MediaQuery.of(context).size.height * (isMobile ? 0.9 : 0.8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surface,
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(20),
+                                  topRight: Radius.circular(20),
                                 ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      for (var customer in customers) {
-                                        customer.items.clear();
-                                      }
-                                    });
-                                    Navigator.pop(context);
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
+                              ),
+                              child: Column(
+                                children: [
+                                  // Header
+                                  Container(
+                                    padding: EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(color: Colors.grey.shade300),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.assessment,
+                                          color: Theme.of(context).colorScheme.primary,
+                                          size: 24,
+                                        ),
+                                        SizedBox(width: 12),
+                                        Text(
+                                          'Order Status',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                        ),
+                                        Spacer(),
+                                        IconButton(
+                                          icon: Icon(Icons.close),
+                                          onPressed: () => Navigator.pop(context),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  child: Text('Clear All'),
-                                ),
-                              ],
+                                  // Status content
+                                  Expanded(
+                                    child: _buildStatusSection(),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.grey.shade700,
+                        icon: Icon(
+                          Icons.assessment,
+                          size: isMobile ? 18 : 20,
+                        ),
+                        label: Text(
+                          'Status',
+                          style: TextStyle(fontSize: isMobile ? 14 : 16),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade600,
+                          foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          elevation: 2,
                         ),
-                        child: Text(
-                          'Clear All',
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: allCustomersTotal == 0 ? null : _openPaymentScreen,
+                        icon: Icon(
+                          Icons.receipt_long,
+                          size: isMobile ? 18 : 20,
+                        ),
+                        label: Text(
+                          'Bill',
                           style: TextStyle(fontSize: isMobile ? 14 : 16),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          disabledForegroundColor: Colors.grey.shade600,
+                          padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 2,
                         ),
                       ),
                     ),
@@ -2180,6 +2913,12 @@ class _POSScreenState extends State<POSScreen> {
           StatusCountWidget(
             holdCount: holdCount,
             fireCount: fireCount,
+            holdItems: _getHoldItems(),
+            fireItems: _getFireItems(),
+            onItemMovedToFire: (item) {
+              // Call API to fire the item
+              _fireItems();
+            },
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/order_item.dart';
 import '../models/order_status.dart';
@@ -14,15 +15,27 @@ class KitchenStatusScreen extends StatefulWidget {
   State<KitchenStatusScreen> createState() => _KitchenStatusScreenState();
 }
 
-class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
+class _KitchenStatusScreenState extends State<KitchenStatusScreen>
+    with TickerProviderStateMixin {
   late List<OrderStatus> statuses;
   Timer? _timer;
+  final Map<String, AnimationController> _explosionControllers = {};
+  final Map<String, Animation<double>> _explosionAnimations = {};
 
   @override
   void initState() {
     super.initState();
     _initStatuses();
     _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    for (var controller in _explosionControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 
   void _initStatuses() {
@@ -55,12 +68,6 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
   void _moveItem(OrderItem item, String fromStatus, String toStatus) {
     setState(() {
       // Remove from current status
@@ -77,14 +84,49 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         }
       }
     });
+
+    // Trigger explosion animation if moving to Fire
+    if (toStatus == 'Fire') {
+      _triggerExplosion(item.name);
+    }
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${item.name} moved to $toStatus'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        content: Row(
+          children: [
+            if (toStatus == 'Fire')
+              Icon(Icons.local_fire_department, color: Colors.white),
+            SizedBox(width: toStatus == 'Fire' ? 8 : 0),
+            Text('${item.name} moved to $toStatus'),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: toStatus == 'Fire' ? Colors.red.shade600 : Theme.of(context).colorScheme.primary,
       ),
     );
+  }
+
+  void _triggerExplosion(String itemName) {
+    if (!_explosionControllers.containsKey(itemName)) {
+      final controller = AnimationController(
+        duration: const Duration(milliseconds: 800),
+        vsync: this,
+      );
+      final animation = CurvedAnimation(
+        parent: controller,
+        curve: Curves.easeOut,
+      );
+      _explosionControllers[itemName] = controller;
+      _explosionAnimations[itemName] = animation;
+    }
+
+    _explosionControllers[itemName]!.forward().then((_) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && _explosionControllers.containsKey(itemName)) {
+          _explosionControllers[itemName]!.reset();
+        }
+      });
+    });
   }
 
   void _printBill() {
@@ -337,17 +379,19 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ),
           ),
           Expanded(
-            child: DragTarget<OrderItem>(
-              onAccept: (draggedItem) {
-                // Check if item is from a different status
-                for (var otherStatus in statuses) {
-                  if (otherStatus != status && otherStatus.items.contains(draggedItem)) {
-                    _moveItem(draggedItem, otherStatus.name, status.name);
-                    break;
-                  }
-                }
-              },
-              builder: (context, candidateData, rejectedData) {
+            child: Stack(
+              children: [
+                DragTarget<OrderItem>(
+                  onAccept: (draggedItem) {
+                    // Check if item is from a different status
+                    for (var otherStatus in statuses) {
+                      if (otherStatus != status && otherStatus.items.contains(draggedItem)) {
+                        _moveItem(draggedItem, otherStatus.name, status.name);
+                        break;
+                      }
+                    }
+                  },
+                  builder: (context, candidateData, rejectedData) {
                 return Container(
                   decoration: BoxDecoration(
                     color: candidateData.isNotEmpty 
@@ -396,6 +440,26 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   ),
                 );
               },
+                ),
+                // Explosion overlay
+                if (status.name == 'Fire')
+                  ...status.items.map((item) {
+                    final animation = _explosionAnimations[item.name];
+                    if (animation == null) return const SizedBox.shrink();
+                    return Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: animation,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: ExplosionPainter(animation.value),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  }).toList(),
+              ],
             ),
           ),
         ],
@@ -640,5 +704,97 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       ),
       ),
     );
+  }
+}
+
+class ExplosionPainter extends CustomPainter {
+  final double progress;
+
+  ExplosionPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = math.min(size.width, size.height) * 0.5;
+    final radius = maxRadius * progress;
+
+    // Draw multiple explosion particles
+    final paint = Paint()
+      ..style = PaintingStyle.fill
+      ..strokeWidth = 2;
+
+    // Main explosion circle
+    paint.color = Colors.red.withOpacity(0.4 * (1 - progress));
+    canvas.drawCircle(center, radius, paint);
+
+    // Explosion particles
+    final particleCount = 16;
+    for (int i = 0; i < particleCount; i++) {
+      final angle = (i * 2 * math.pi) / particleCount;
+      final distance = radius * 0.8;
+      final x = center.dx + distance * (1 + progress * 0.5) * math.cos(angle);
+      final y = center.dy + distance * (1 + progress * 0.5) * math.sin(angle);
+
+      paint.color = Colors.orange.withOpacity(0.9 * (1 - progress));
+      canvas.drawCircle(Offset(x, y), 10 * (1 - progress), paint);
+    }
+
+    // Fire emoji effect
+    if (progress > 0.2 && progress < 0.6) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: '🔥',
+          style: TextStyle(
+            fontSize: 80 * progress,
+            color: Colors.red,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(
+          center.dx - textPainter.width / 2,
+          center.dy - textPainter.height / 2,
+        ),
+      );
+    }
+
+    // "BOOM" text effect
+    if (progress > 0.3 && progress < 0.7) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: 'BOOM!',
+          style: TextStyle(
+            fontSize: 40 * progress,
+            fontWeight: FontWeight.bold,
+            color: Colors.red.shade700,
+            shadows: [
+              Shadow(
+                color: Colors.orange,
+                blurRadius: 10,
+              ),
+            ],
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(
+          center.dx - textPainter.width / 2,
+          center.dy - textPainter.height / 2 - 50,
+        ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(ExplosionPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

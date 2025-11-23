@@ -522,6 +522,8 @@ class ApiService {
 
   static Future<ApiResponse<Map<String, dynamic>>> fireItem({
     required String orderTicketId,
+    List<int>? orderItemIds,
+    List<Map<String, dynamic>>? itemsSequence,
   }) async {
     try {
       final token = await getToken();
@@ -534,9 +536,19 @@ class ApiService {
       }
 
       final url = Uri.parse('${await baseUrl}/api/pos/fire_item');
-      final body = {
+      final body = <String, dynamic>{
         'order_ticket_id': orderTicketId,
       };
+
+      // Add optional order_item_ids if provided
+      if (orderItemIds != null && orderItemIds.isNotEmpty) {
+        body['order_item_ids'] = orderItemIds;
+      }
+
+      // Add optional items_sequence if provided
+      if (itemsSequence != null && itemsSequence.isNotEmpty) {
+        body['items_sequence'] = itemsSequence;
+      }
 
       print('========================================');
       print('🔥 FIRING ITEMS - API Request');
@@ -570,6 +582,58 @@ class ApiService {
         return ApiResponse<Map<String, dynamic>>(
           success: false,
           message: jsonResponse['message'] ?? 'Failed to fire items',
+          data: null,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error: ${e.toString()}',
+        data: null,
+      );
+    }
+  }
+
+  static Future<ApiResponse<Map<String, dynamic>>> updateItemSequence({
+    required String orderTicketId,
+    required int orderItemId,
+    required int sequence,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: 'No token found',
+          data: null,
+        );
+      }
+
+      final url = Uri.parse('${await baseUrl}/api/pos/order-item/update-sequence');
+      final body = {
+        'order_ticket_id': orderTicketId,
+        'order_item_id': orderItemId,
+        'sequence': sequence,
+      };
+
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(body),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && jsonResponse['success'] == true) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          message: jsonResponse['message'] ?? 'Sequence updated successfully',
+          data: jsonResponse['data'] as Map<String, dynamic>?,
+        );
+      } else {
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: jsonResponse['message'] ?? 'Failed to update sequence',
           data: null,
         );
       }

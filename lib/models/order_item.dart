@@ -12,6 +12,8 @@ class OrderItem {
   List<Map<String, dynamic>>? modifiers; // Modifiers with qty and price
   int? orderItemId; // Unique ID from database (null = temporary/new item, not saved yet)
   bool fireStatus; // Fire status from database (false = hold, true = fire)
+  int sequence; // Sequence for priority ordering (lower = higher priority)
+  DateTime? createdAt; // Created timestamp from database
 
   OrderItem({
     required this.name,
@@ -25,6 +27,8 @@ class OrderItem {
     this.modifiers,
     this.orderItemId, // null for new items, set when loaded from API or after sending
     this.fireStatus = false, // Default to false (hold) for new items
+    this.sequence = 0, // Default sequence
+    this.createdAt, // Created timestamp from database
   }) : price = _ensureDouble(price);
   
   // Helper method to ensure price is always a double
@@ -48,4 +52,21 @@ class OrderItem {
   
   // Helper to check if item is fired
   bool get isFired => fireStatus;
+  
+  // Get elapsed time since creation
+  Duration get elapsedTime {
+    final startTime = createdAt ?? addedTime;
+    return DateTime.now().difference(startTime);
+  }
+  
+  // Get formatted elapsed time string
+  String get elapsedTimeString {
+    final duration = elapsedTime;
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '${minutes}m ${seconds}s';
+  }
+  
+  // Get priority number (sequence + 1 for display)
+  int get priority => sequence + 1;
 }
