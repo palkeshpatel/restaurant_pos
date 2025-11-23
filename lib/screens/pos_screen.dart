@@ -210,6 +210,19 @@ class _POSScreenState extends State<POSScreen> {
               final orderItemId = orderItemData['id'] as int?;
               final status = orderItemData['status'] as String? ?? 'pending';
               
+              // Get fire_status from API response (0 = hold, 1 = fire)
+              bool fireStatus = false;
+              final fireStatusValue = orderItemData['fire_status'];
+              if (fireStatusValue != null) {
+                if (fireStatusValue is bool) {
+                  fireStatus = fireStatusValue;
+                } else if (fireStatusValue is int) {
+                  fireStatus = fireStatusValue == 1;
+                } else if (fireStatusValue is String) {
+                  fireStatus = fireStatusValue == '1' || fireStatusValue.toLowerCase() == 'true';
+                }
+              }
+              
               if (orderItemId != null) {
                 sentCount++; // Count saved items
               }
@@ -272,6 +285,7 @@ class _POSScreenState extends State<POSScreen> {
                     quantity: qty,
                     instructions: instructions,
                     orderItemId: dbOrderItemId, // Store unique ID from database (null = not saved yet)
+                    fireStatus: fireStatus, // Store fire_status from database
                   ));
                   loadedCount++;
                   print('_loadExistingOrderItems: Added item: $itemName (₹$itemPrice x $qty) to customer $customerNo - OrderItemID: $dbOrderItemId, Status: $status');
@@ -399,8 +413,32 @@ class _POSScreenState extends State<POSScreen> {
   // Legacy single order items (for backward compatibility)
   List<OrderItem> get orderItems => selectedCustomer.items;
   
-  int holdCount = 2;
-  int fireCount = 1;
+  // Calculate hold and fire counts dynamically from all order items
+  int get holdCount {
+    int count = 0;
+    for (var customer in customers) {
+      for (var item in customer.items) {
+        // Only count saved items (items that have been sent to kitchen)
+        if (item.isSaved && item.isOnHold) {
+          count += item.quantity; // Count by quantity, not just items
+        }
+      }
+    }
+    return count;
+  }
+  
+  int get fireCount {
+    int count = 0;
+    for (var customer in customers) {
+      for (var item in customer.items) {
+        // Only count saved items (items that have been sent to kitchen)
+        if (item.isSaved && item.isFired) {
+          count += item.quantity; // Count by quantity, not just items
+        }
+      }
+    }
+    return count;
+  }
 
   double get subtotal => selectedCustomer.subtotal;
   double get tax => selectedCustomer.tax;
@@ -441,6 +479,7 @@ class _POSScreenState extends State<POSScreen> {
           menuItemId: item.id,
           quantity: 1,
           orderItemId: null, // New items have no ID (temporary)
+          fireStatus: false, // New items default to hold (not fired)
         ));
         print('_addToOrder: Added new temporary item: ${item.name} (price: ${item.price} (${item.price.runtimeType}), total items in customer: ${customers[targetIndex].items.length})');
       }
@@ -748,11 +787,26 @@ class _POSScreenState extends State<POSScreen> {
             final returnedMenuItemId = returnedItem['menu_item_id'] as int?;
             final returnedId = returnedItem['id'] as int?;
             
+            // Get fire_status from API response
+            bool returnedFireStatus = false;
+            final fireStatusValue = returnedItem['fire_status'];
+            if (fireStatusValue != null) {
+              if (fireStatusValue is bool) {
+                returnedFireStatus = fireStatusValue;
+              } else if (fireStatusValue is int) {
+                returnedFireStatus = fireStatusValue == 1;
+              } else if (fireStatusValue is String) {
+                returnedFireStatus = fireStatusValue == '1' || fireStatusValue.toLowerCase() == 'true';
+              }
+            }
+            
             if (returnedMenuItemId == sentItem.menuItemId && returnedId != null) {
               // Update item with its database ID - this marks it as saved
               sentItem.orderItemId = returnedId;
+              // Update fire_status from API response
+              sentItem.fireStatus = returnedFireStatus;
               updatedAny = true;
-              print('_sendToKitchen: Updated item "${sentItem.name}" (menu_item_id: $returnedMenuItemId) with orderItemId: $returnedId (now marked as saved)');
+              print('_sendToKitchen: Updated item "${sentItem.name}" (menu_item_id: $returnedMenuItemId) with orderItemId: $returnedId, fireStatus: $returnedFireStatus (now marked as saved)');
             } else {
               print('_sendToKitchen: WARNING - Mismatch at index $i: sent menu_item_id=${sentItem.menuItemId}, returned menu_item_id=$returnedMenuItemId');
             }
@@ -779,14 +833,29 @@ class _POSScreenState extends State<POSScreen> {
                   }
                 }
                 
+                // Get fire_status from API response
+                bool returnedFireStatus = false;
+                final fireStatusValue = returnedItem['fire_status'];
+                if (fireStatusValue != null) {
+                  if (fireStatusValue is bool) {
+                    returnedFireStatus = fireStatusValue;
+                  } else if (fireStatusValue is int) {
+                    returnedFireStatus = fireStatusValue == 1;
+                  } else if (fireStatusValue is String) {
+                    returnedFireStatus = fireStatusValue == '1' || fireStatusValue.toLowerCase() == 'true';
+                  }
+                }
+                
                 // Match by menu_item_id, customer_no, and qty
                 if (returnedMenuItemId == sentItem.menuItemId &&
                     returnedCustomerNo == sentItemCustomerNo &&
                     returnedQty == sentItem.quantity &&
                     returnedId != null) {
                   sentItem.orderItemId = returnedId;
+                  // Update fire_status from API response
+                  sentItem.fireStatus = returnedFireStatus;
                   updatedAny = true;
-                  print('_sendToKitchen: Updated item "${sentItem.name}" with ID: $returnedId (property match)');
+                  print('_sendToKitchen: Updated item "${sentItem.name}" with ID: $returnedId, fireStatus: $returnedFireStatus (property match)');
                   break;
                 }
               }
@@ -890,6 +959,149 @@ class _POSScreenState extends State<POSScreen> {
           _isSendingToKitchen = false;
         });
       }
+    }
+  }
+
+  Future<void> _fireItems() async {
+    // Check if we have order_ticket_id
+    final orderTicketId = _orderTicketId ?? widget.table?.orderTicketId;
+    
+    if (orderTicketId == null || orderTicketId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order Ticket ID not found. Please ensure the table is reserved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Verify we're using ID format (starts with "ORD-"), not title format
+    if (!orderTicketId.startsWith('ORD-')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Invalid order ticket ID format. Expected format: ORD-20251121-XXXXX\nGot: $orderTicketId'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    // Check if there are any items on hold
+    if (holdCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No items on hold to fire'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final response = await ApiService.fireItem(orderTicketId: orderTicketId);
+
+      if (!mounted) return;
+
+      if (response.success && response.data != null) {
+        final data = response.data!;
+        final updatedItemsCount = data['updated_items_count'] as int? ?? 0;
+        final orderItems = data['order_items'] as List<dynamic>? ?? [];
+
+        // Update fire_status for all order items in the response
+        if (orderItems.isNotEmpty) {
+          // Create a map of orderItemId -> fire_status from API response
+          final Map<int, bool> fireStatusMap = {};
+          for (var item in orderItems) {
+            final orderItemId = item['id'] as int?;
+            if (orderItemId != null) {
+              final fireStatusValue = item['fire_status'];
+              bool fireStatus = false;
+              if (fireStatusValue != null) {
+                if (fireStatusValue is bool) {
+                  fireStatus = fireStatusValue;
+                } else if (fireStatusValue is int) {
+                  fireStatus = fireStatusValue == 1;
+                } else if (fireStatusValue is String) {
+                  fireStatus = fireStatusValue == '1' || fireStatusValue.toLowerCase() == 'true';
+                }
+              }
+              fireStatusMap[orderItemId] = fireStatus;
+            }
+          }
+
+          // Update all order items in all customers
+          for (var customer in customers) {
+            for (var item in customer.items) {
+              if (item.orderItemId != null && fireStatusMap.containsKey(item.orderItemId)) {
+                item.fireStatus = fireStatusMap[item.orderItemId]!;
+              }
+            }
+          }
+
+          setState(() {}); // Refresh UI to show updated counts
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.local_fire_department, color: Colors.white, size: 28),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Items Fired Successfully!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '$updatedItemsCount item(s) fired',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: EdgeInsets.all(16),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error firing items: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -1576,6 +1788,30 @@ class _POSScreenState extends State<POSScreen> {
                     ),
                   ],
                 ),
+                // Fire Items Button
+                if (holdCount > 0) ...[
+                  SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _fireItems,
+                    icon: Icon(Icons.local_fire_department, size: isMobile ? 20 : 24),
+                    label: Text(
+                      'Fire Items ($holdCount on hold)',
+                      style: TextStyle(
+                        fontSize: isMobile ? 14 : 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade600,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -11,6 +11,7 @@ class OrderItem {
   List<int>? decisionIds; // Selected decision IDs
   List<Map<String, dynamic>>? modifiers; // Modifiers with qty and price
   int? orderItemId; // Unique ID from database (null = temporary/new item, not saved yet)
+  bool fireStatus; // Fire status from database (false = hold, true = fire)
 
   OrderItem({
     required this.name,
@@ -23,6 +24,7 @@ class OrderItem {
     this.decisionIds,
     this.modifiers,
     this.orderItemId, // null for new items, set when loaded from API or after sending
+    this.fireStatus = false, // Default to false (hold) for new items
   }) : price = _ensureDouble(price);
   
   // Helper method to ensure price is always a double
@@ -40,4 +42,10 @@ class OrderItem {
   
   // Helper to check if item is temporary (new, not saved)
   bool get isTemporary => orderItemId == null;
+  
+  // Helper to check if item is on hold (not fired)
+  bool get isOnHold => !fireStatus;
+  
+  // Helper to check if item is fired
+  bool get isFired => fireStatus;
 }

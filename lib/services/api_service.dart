@@ -519,4 +519,66 @@ class ApiService {
       );
     }
   }
+
+  static Future<ApiResponse<Map<String, dynamic>>> fireItem({
+    required String orderTicketId,
+  }) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: 'No token found',
+          data: null,
+        );
+      }
+
+      final url = Uri.parse('${await baseUrl}/api/pos/fire_item');
+      final body = {
+        'order_ticket_id': orderTicketId,
+      };
+
+      print('========================================');
+      print('🔥 FIRING ITEMS - API Request');
+      print('========================================');
+      print('URL: $url');
+      print('Body: ${jsonEncode(body)}');
+      print('========================================');
+
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(body),
+      );
+
+      final jsonResponse = jsonDecode(response.body);
+
+      print('========================================');
+      print('🔥 FIRING ITEMS - API Response');
+      print('========================================');
+      print('Status Code: ${response.statusCode}');
+      print('Response: ${const JsonEncoder.withIndent('  ').convert(jsonResponse)}');
+      print('========================================');
+
+      if (response.statusCode == 200 && jsonResponse['success'] == true) {
+        return ApiResponse<Map<String, dynamic>>(
+          success: true,
+          message: jsonResponse['message'] ?? 'Items fired successfully',
+          data: jsonResponse['data'] as Map<String, dynamic>?,
+        );
+      } else {
+        return ApiResponse<Map<String, dynamic>>(
+          success: false,
+          message: jsonResponse['message'] ?? 'Failed to fire items',
+          data: null,
+        );
+      }
+    } catch (e) {
+      return ApiResponse<Map<String, dynamic>>(
+        success: false,
+        message: 'Error: ${e.toString()}',
+        data: null,
+      );
+    }
+  }
 }
