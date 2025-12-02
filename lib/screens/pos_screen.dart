@@ -1400,7 +1400,7 @@ class _POSScreenState extends State<POSScreen> {
       }
       
       print('========================================');
-      print('📤 PREPARING REQUEST TO: /api/pos/order/send');
+      print('📤 PREPARING REQUEST TO: /api/pos/send-to-kitchen');
       print('========================================');
       print('📋 REQUEST DETAILS:');
       print('   order_ticket_id: $orderTicketId');

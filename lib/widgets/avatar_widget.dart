@@ -46,7 +46,7 @@ class _AvatarWidgetState extends State<AvatarWidget> {
     String resolvedUrl = originalUrl;
     if (originalUrl.contains('localhost')) {
       final storedBase = await StorageService.getBaseUrl();
-      final fallbackBase = storedBase ?? 'http://10.0.2.2:8000';
+      final fallbackBase = storedBase ?? 'http://16.170.247.143';
       try {
         final avatarUri = Uri.parse(originalUrl);
         final baseUri = Uri.parse(fallbackBase);

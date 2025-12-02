@@ -14,7 +14,7 @@ class ApiService {
 
   static Future<String> get baseUrl async {
     _baseUrl ??= await StorageService.getBaseUrl();
-    return _baseUrl ?? 'http://localhost:8000';
+    return _baseUrl ?? 'http://16.170.247.143';
   }
 
   static Future<void> setToken(String? token) async {
@@ -32,7 +32,13 @@ class ApiService {
   }
 
   static Future<void> initialize() async {
-    _baseUrl = await StorageService.getBaseUrl();
+    var baseUrl = await StorageService.getBaseUrl();
+    // If no base URL is stored, set it to live API
+    if (baseUrl == null || baseUrl.isEmpty || baseUrl == 'http://localhost:8000') {
+      baseUrl = 'http://16.170.247.143';
+      await StorageService.saveBaseUrl(baseUrl);
+    }
+    _baseUrl = baseUrl;
     _token = await StorageService.getToken();
   }
 
@@ -379,7 +385,7 @@ class ApiService {
         );
       }
 
-      final url = Uri.parse('${await baseUrl}/api/pos/order/send');
+      final url = Uri.parse('${await baseUrl}/api/pos/send-to-kitchen');
       final body = {
         'order_ticket_id': orderTicketId,
         'order_id': orderId,
@@ -391,7 +397,7 @@ class ApiService {
       final formattedRequestBody = const JsonEncoder.withIndent('  ').convert(body);
       
       print('========================================');
-      print('🚀 POST REQUEST: /api/pos/order/send');
+      print('🚀 POST REQUEST: /api/pos/send-to-kitchen');
       print('========================================');
       print('📍 URL: $url');
       print('🔑 Headers:');

@@ -29,7 +29,7 @@ class StorageService {
 
   static Future<String?> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_baseUrlKey) ?? 'http://localhost:8000';
+    return prefs.getString(_baseUrlKey) ?? 'http://16.170.247.143';
   }
 
   static Future<void> saveCurrentEmployee(CurrentEmployee employee) async {
