@@ -1,0 +1,2701 @@
+{
+	"info": {
+		"_postman_id": "pos-system-api-v2",
+		"name": "Restaurant POS System API",
+		"description": "Complete API collection for Restaurant POS System with Admin and POS endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "AUTH API",
+			"item": [
+				{
+					"name": "Super Admin Auth",
+					"item": [
+						{
+							"name": "Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const response = pm.response.json();",
+											"if (response.data && response.data.token) {",
+											"    pm.collectionVariables.set('admin_token', response.data.token);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"description": "Each line item automatically records the active order_id. Provide menu and modifier IDs for the same business only.",
+								"description": "New orders automatically use the authenticated admin's business_id; do not send it explicitly.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{super_admin_email}}\",\n    \"password\": \"{{super_admin_password}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/auth/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Logout",
+							"request": {
+								"description": "Kitchen tickets inherit business_id from the authenticated admin and linked order.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/auth/logout",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"logout"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Me",
+							"request": {
+								"description": "Modifiers are scoped to the authenticated admin's business_id automatically.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/auth/me",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"me"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Admin Auth",
+					"item": [
+						{
+							"name": "Login",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const response = pm.response.json();",
+											"if (response.data && response.data.token) {",
+											"    pm.collectionVariables.set('admin_token', response.data.token);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"description": "New orders automatically use the authenticated admin's business_id; do not send it explicitly.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/auth/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Logout",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/auth/logout",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"logout"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Me",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{admin_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/auth/me",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"me"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "SUPER-ADMIN API",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{admin_token}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "Business Management",
+					"item": [
+						{
+							"name": "Get All Businesses",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/businesses",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"businesses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Business",
+							"request": {
+								"description": "Kitchen tickets inherit business_id from the authenticated admin and linked order.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Downtown Restaurant\",\n    \"llc_name\": \"Downtown Restaurant LLC\",\n    \"address\": \"456 Main Street, City\",\n    \"logo_url\": \"https://example.com/logo.png\",\n    \"timezone\": \"Asia/Kolkata\",\n    \"auto_gratuity_percent\": 18.00,\n    \"auto_gratuity_min_guests\": 8,\n    \"cc_fee_percent\": 3.50\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/businesses",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"businesses"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Business by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/businesses/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"businesses",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Business",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Business Name\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/businesses/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"businesses",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Business",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/businesses/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"businesses",
+										"1"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "User Management",
+					"item": [
+						{
+							"name": "Get All Users",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/users",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create User",
+							"request": {
+								"description": "Modifiers are scoped to the authenticated admin's business_id automatically.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Restaurant Manager\",\n    \"email\": \"manager@example.com\",\n    \"password\": \"password\",\n    \"business_id\": 1,\n    \"is_super_admin\": false\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/users",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"users"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/users/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"users",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update User",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Manager\",\n    \"business_id\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/users/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"users",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete User",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/super-admin/users/1",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"super-admin",
+										"users",
+										"1"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "ADMIN API",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{admin_token}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+		{
+			"name": "Employee Management",
+			"item": [
+				{
+					"name": "Get All Employees",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/employees",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "employees"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Employee",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"first_name\": \"John\",\n    \"last_name\": \"Doe\",\n    \"email\": \"john@example.com\",\n    \"pin4\": \"1234\",\n    \"image\": \"https://example.com/photo.jpg\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/employees",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "employees"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Employee by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/employees/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "employees", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Employee",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"first_name\": \"Updated Name\"\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/employees/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "employees", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Roles to Employee",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"role_ids\": [1, 2]\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/employees/1/assign-roles",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "employees", "1", "assign-roles"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Employee",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/employees/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "employees", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+					"name": "Role Management",
+			"item": [
+				{
+							"name": "Get All Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/roles",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "roles"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Role",
+							"request": {
+								"description": "Shifts automatically use the authenticated admin's business_id.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Waiter\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/roles",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "roles"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Role by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/roles/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "roles", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Role",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Senior Waiter\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/roles/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "roles", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Assign Permissions to Role",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"permission_ids\": [1, 2, 3]\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/roles/1/assign-permissions",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "roles", "1", "assign-permissions"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Role",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/roles/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "roles", "1"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Permission Management",
+					"item": [
+						{
+							"name": "Get All Permissions",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/permissions",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "permissions"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Create Permission",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"code\": \"orders.create\",\n    \"description\": \"Create orders\"\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/permissions",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "permissions"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Get Permission by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/permissions/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "permissions", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Permission",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"description\": \"Create and manage orders\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/permissions/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "permissions", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Permission",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/permissions/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "permissions", "1"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Discount Reason Management",
+					"item": [
+						{
+							"name": "Get All Discount Reasons",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/discount-reasons",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "discount-reasons"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Create Discount Reason",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"name\": \"Staff Discount\",\n    \"requires_manager\": false\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/discount-reasons",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "discount-reasons"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Get Discount Reason by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/discount-reasons/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "discount-reasons", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Update Discount Reason",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"name\": \"Manager Approved Discount\"\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/discount-reasons/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "discount-reasons", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Delete Discount Reason",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/discount-reasons/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "discount-reasons", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+					"name": "Floor Management",
+			"item": [
+				{
+							"name": "Get All Floors",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/floors",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "floors"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Floor",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Ground Floor\",\n    \"floor_type\": \"indoor\",\n    \"width_px\": 800,\n    \"height_px\": 600\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/floors",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "floors"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Get Floor by ID",
+					"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/floors/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "floors", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Floor",
+							"request": {
+								"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Floor Name\"\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/floors/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "floors", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Delete Floor",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/floors/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "floors", "1"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Table Management",
+					"item": [
+						{
+							"name": "Get All Tables",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/tables",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "tables"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Table",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"floor_id\": 1,\n    \"name\": \"T1\",\n    \"size\": \"medium\",\n    \"capacity\": 4,\n    \"status\": \"available\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/tables",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "tables"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Table by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/tables/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "tables", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Table",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"T1 Updated\",\n    \"capacity\": 6,\n    \"status\": \"occupied\"\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/tables/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "tables", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Table",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/tables/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "tables", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+				"name": "Menu Management",
+		"item": [
+			{
+					"name": "Get All Menus",
+				"request": {
+					"method": "GET",
+					"header": [],
+					"url": {
+							"raw": "{{base_url}}/api/admin/menus",
+						"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menus"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Menu",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Dine-In Menu\",\n    \"description\": \"Restaurant dine-in offerings\",\n    \"image\": \"https://example.com/menu.jpg\",\n    \"icon_image\": \"https://example.com/menu-icon.jpg\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/menus",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menus"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Menu by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/menus/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menus", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Menu",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Menu Name\",\n    \"description\": \"Updated description\",\n    \"image\": \"https://example.com/menu-updated.jpg\",\n    \"icon_image\": \"https://example.com/menu-icon-updated.jpg\",\n    \"is_active\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/menus/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menus", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Menu",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/menus/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menus", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+				"name": "Menu Category Management",
+		"item": [
+			{
+					"name": "Get All Menu Categories",
+				"request": {
+					"method": "GET",
+					"header": [],
+					"url": {
+							"raw": "{{base_url}}/api/admin/menu-categories",
+						"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menu-categories"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Menu Category",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"menu_id\": 1,\n    \"name\": \"Main Course\",\n    \"description\": \"Signature entrees\",\n    \"image\": \"https://example.com/category.jpg\",\n    \"icon_image\": \"https://example.com/category-icon.jpg\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/menu-categories",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menu-categories"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Menu Category by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/menu-categories/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menu-categories", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Menu Category",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Updated Menu Category\",\n    \"is_active\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/menu-categories/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menu-categories", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Menu Category",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/menu-categories/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "admin", "menu-categories", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+				{
+					"name": "Menu Item Management",
+					"item": [
+						{
+							"name": "Get All Menu Items",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/menu-items",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "menu-items"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Create Menu Item",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+								"raw": "{\n    \"menu_category_id\": 1,\n    \"name\": \"Chicken Biryani\",\n    \"price_cash\": 299.00,\n    \"price_card\": 319.00,\n    \"image\": \"https://example.com/item.jpg\",\n    \"icon_image\": \"https://example.com/item-icon.jpg\",\n    \"is_active\": true\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/menu-items",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "menu-items"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Get Menu Item by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/menu-items/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "menu-items", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Update Menu Item",
+					"request": {
+								"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Menu Item\",\n    \"price_cash\": 350.00,\n    \"price_card\": 370.00\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/menu-items/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "menu-items", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Attach Modifier Groups",
+					"request": {
+								"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"modifier_group_ids\": [1, 2]\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/menu-items/1/attach-modifier-groups",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "menu-items", "1", "attach-modifier-groups"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Delete Menu Item",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/menu-items/1",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "menu-items", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+					"name": "Modifier Management",
+			"item": [
+				{
+							"name": "Get All Modifier Groups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/modifier-groups",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "modifier-groups"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Create Modifier Group",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"name\": \"Spice Level\",\n    \"min_select\": 1,\n    \"max_select\": 1\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/modifier-groups",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "modifier-groups"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Get All Modifiers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/modifiers",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "modifiers"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Create Modifier",
+					"request": {
+						"description": "Modifiers inherit the authenticated admin's business_id automatically.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"group_id\": 1,\n    \"name\": \"Extra Spicy\",\n    \"additional_price\": 10.00\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/modifiers",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "modifiers"]
+						}
+					},
+					"response": []
+						}
+					]
+				},
+				{
+					"name": "Decision Group Management",
+					"item": [
+						{
+							"name": "Get All Decision Groups",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/decision-groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decision-groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Decision Group",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Spice Level\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/decision-groups",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decision-groups"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Decision Group by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/decision-groups/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decision-groups", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Decision Group",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Decision Group Name\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/decision-groups/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decision-groups", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Decision Group",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/decision-groups/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decision-groups", "1"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Decision Management",
+					"item": [
+						{
+							"name": "Get All Decisions",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/decisions",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decisions"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Decision",
+							"request": {
+								"description": "Decisions inherit the authenticated admin's business_id automatically.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"group_id\": 1,\n    \"name\": \"Mild\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/decisions",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decisions"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Decision by ID",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/decisions/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decisions", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Decision",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Decision Name\",\n    \"group_id\": 1\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/decisions/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decisions", "1"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Decision",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/decisions/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "decisions", "1"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Tax Rate Management",
+					"item": [
+						{
+							"name": "Add/Update Tax Rate (Food)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"GST (Food)\",\n    \"rate_percent\": 5.00\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/taxes",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "taxes"]
+								},
+								"description": "Add or update food tax rate. Only one food tax rate is allowed per business. If food tax rate exists, it will be updated; otherwise, it will be created."
+							},
+							"response": []
+						},
+						{
+							"name": "Update Tax Rate (Food)",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"GST (Food)\",\n    \"rate_percent\": 5.00\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/taxes/1",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "taxes", "1"]
+								},
+								"description": "Update existing food tax rate by ID."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Printer Management",
+					"item": [
+				{
+					"name": "Get All Printers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/printers",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "printers"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Printer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Kitchen Printer\",\n    \"ip_address\": \"192.168.1.100\",\n    \"is_kitchen\": true,\n    \"is_receipt\": false\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/printers",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "printers"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Get All Printer Routes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+									"raw": "{{base_url}}/api/admin/printer-routes",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "printer-routes"]
+						}
+					},
+					"response": []
+				},
+				{
+							"name": "Create Printer Route",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+									"raw": "{\n    \"name\": \"Kitchen Route\",\n    \"printer_id\": 1\n}"
+						},
+						"url": {
+									"raw": "{{base_url}}/api/admin/printer-routes",
+							"host": ["{{base_url}}"],
+									"path": ["api", "admin", "printer-routes"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Shift Management",
+					"item": [
+						{
+							"name": "Get All Shifts",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/shifts",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "shifts"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Shift",
+							"request": {
+								"description": "Shifts automatically use the authenticated admin's business_id.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"employee_id\": 1,\n    \"clock_in_at\": \"2024-01-15 09:00:00\",\n    \"clock_out_at\": \"2024-01-15 17:00:00\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/shifts",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "shifts"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Reservation Management",
+					"item": [
+						{
+							"name": "Get All Reservations",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/reservations",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "reservations"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Reservation",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"table_id\": 1,\n    \"guest_name\": \"John Doe\",\n    \"party_size\": 4,\n    \"reservation_at\": \"2024-01-20 19:00:00\",\n    \"status\": \"confirmed\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/reservations",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "reservations"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Order Management",
+					"item": [
+						{
+							"name": "Get All Orders",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/orders",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "orders"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Order",
+							"request": {
+								"description": "New orders automatically use the authenticated admin's business_id; do not send it explicitly.",
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"table_id\": 1,\n    \"created_by_employee_id\": 1,\n    \"status\": \"open\",\n    \"notes\": \"Special instructions\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/orders",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "orders"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Check & Payment Management",
+					"item": [
+						{
+							"name": "Get All Checks",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/checks",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "checks"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Payments",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/payments",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "payments"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Payment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"check_id\": 1,\n    \"employee_id\": 1,\n    \"method\": \"card\",\n    \"amount\": 500.00,\n    \"tip_amount\": 90.00\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/admin/payments",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "payments"]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Kitchen Ticket Management",
+					"item": [
+						{
+							"name": "Get All Kitchen Tickets",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/admin/kitchen-tickets",
+									"host": ["{{base_url}}"],
+									"path": ["api", "admin", "kitchen-tickets"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "POS API",
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{pos_token}}",
+						"type": "string"
+					}
+				]
+			},
+			"item": [
+				{
+					"name": "Step 1 - Get Business with Employees",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/pos/get-business/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "get-business", "1"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 2 - Verify Employee PIN",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.token) {",
+									"    pm.collectionVariables.set('pos_token', response.data.token);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"employee_id\": 1,\n    \"pin4\": \"1234\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/verify-pin",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "verify-pin"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POS Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/pos/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "logout"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 3 - Get Tables",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/pos/get-tables",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "get-tables"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 4 - Get Menu",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/pos/menu",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "menu"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 5 - Reserve Table (Create Order)",
+					"request": {
+						"description": "Create a new order. Returns order_id and order_ticket_id to use in Step 6.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"table_id\": 1,\n    \"order_notes\": \"Table near window\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/reserve_table",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "reserve_table"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 5 - Resume Order (Access Existing Order)",
+					"request": {
+						"description": "Resume an existing order by order_ticket_id. Validates that the employee_id matches the order's creator. If employee doesn't match, returns error 'It's not your order'. Use this to access an order that was previously created.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20251103-U9VFRB\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/resume_order",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "resume_order"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 5 - Change Table",
+					"request": {
+						"description": "Move entire order (with all merged tables) to a new table. All previously merged tables will be released and made available. The order number stays the same, only the table name in order_ticket_title changes.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20251103-U9VFRB\",\n    \"new_table_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/change_table",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "change_table"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 5 - Replace Table",
+					"request": {
+						"description": "Replace a specific table in merged tables. Only the targeted table (old_table_id) will be replaced with new_table_id. Other merged tables remain unchanged. Useful when you want to swap one table in a merged group.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20251103-U9VFRB\",\n    \"old_table_id\": 2,\n    \"new_table_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/replace_table",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "replace_table"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 5 - Merge Tables",
+					"request": {
+						"description": "Merge multiple table orders into one order. You can pass an array of table IDs to merge. All order items from merged orders will be combined into the first/main order. The order_ticket_title will include all merged table names (e.g., 20251103-01T1T3 or 20251103-01T1T2T3).",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20251103-U9VFRB\",\n    \"table_ids\": [1, 3]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/merge_tables",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "merge_tables"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 6 - Send to Kitchen",
+					"request": {
+						"description": "Send order items to kitchen. Accepts multiple items. If called again, only adds new items (no deletion). Note: Use order_id and order_ticket_id from Step 5 response.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20241103-ABC123\",\n    \"order_id\": 1,\n    \"items\": [\n        {\n            \"menu_item_id\": 1,\n            \"qty\": 2,\n            \"unit_price\": 15.50,\n            \"instructions\": \"No onions, extra cheese\",\n            \"decisions\": [\n                {\"decision_id\": 1},\n                {\"decision_id\": 3}\n            ],\n            \"modifiers\": [\n                {\"modifier_id\": 1, \"qty\": 1, \"price\": 2.50},\n                {\"modifier_id\": 2, \"qty\": 2, \"price\": 1.00}\n            ]\n        },\n        {\n            \"menu_item_id\": 2,\n            \"qty\": 1,\n            \"unit_price\": 22.00,\n            \"instructions\": \"Well done\",\n            \"decisions\": [\n                {\"decision_id\": 2}\n            ],\n            \"modifiers\": [\n                {\"modifier_id\": 3, \"qty\": 1, \"price\": 3.00}\n            ]\n        },\n        {\n            \"menu_item_id\": 3,\n            \"qty\": 3,\n            \"unit_price\": 8.75,\n            \"instructions\": null,\n            \"decisions\": null,\n            \"modifiers\": [\n                {\"modifier_id\": 4, \"qty\": 3, \"price\": 0.50}\n            ]\n        },\n        {\n            \"menu_item_id\": 4,\n            \"qty\": 1,\n            \"unit_price\": 12.00,\n            \"instructions\": \"Extra spicy\",\n            \"decisions\": [\n                {\"decision_id\": 1},\n                {\"decision_id\": 4}\n            ],\n            \"modifiers\": null\n        },\n        {\n            \"menu_item_id\": 5,\n            \"qty\": 2,\n            \"unit_price\": 18.50,\n            \"instructions\": null,\n            \"decisions\": null,\n            \"modifiers\": null\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/send-to-kitchen",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "send-to-kitchen"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fire Items",
+					"request": {
+						"description": "Update all order items with fire_status = 0 to fire_status = 1 for a given order.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/fire_item",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "fire_item"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Order Item Sequence",
+					"request": {
+						"description": "Update the sequence (priority) of a specific order item. Lower sequence number = higher priority. Used for drag-and-drop reordering in the status screen.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20251121-XJROYU\",\n    \"order_item_id\": 1,\n    \"sequence\": 0\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/order-item/update-sequence",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "order-item", "update-sequence"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Step 7 - Payment",
+					"request": {
+						"description": "Process payment for an order. Marks the check as paid, updates order status to completed, and sets table status to available. Prevents further modifications to the order.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20251121-XJROYU\",\n    \"type\": \"cash\",\n    \"amount\": 1294.70,\n    \"tip_amount\": 0.0\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/order/payment",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "order", "payment"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stripe Payment - Create Payment Intent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.payment_intent_id) {",
+									"    pm.collectionVariables.set('payment_intent_id', response.data.payment_intent_id);",
+									"}",
+									"if (response.data && response.data.client_secret) {",
+									"    pm.collectionVariables.set('client_secret', response.data.client_secret);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"description": "✅ REAL PRODUCTION: Creates a Stripe Payment Intent with card_present for REAL tap/insert/swipe payments at physical terminals.\n\n📱 Flow:\n1. Call this endpoint to create payment intent\n2. Flutter app uses client_secret with Stripe Terminal SDK\n3. Customer taps/inserts/swipes card on physical terminal\n4. Call 'Confirm Payment' endpoint after successful tap\n\n🔧 Requirements:\n- Stripe Terminal hardware or NFC-enabled device\n- Employee authentication token required\n- Updates database (order, check, payment)\n\n⚠️ IMPORTANT: Currency must match your Stripe account country (US → usd, UK → gbp, EU → eur).\n\n💡 For testing without hardware, use 'STRIPE DEMO API' section instead.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20241103-ABC123\",\n    \"amount\": 1000.0,\n    \"tip_amount\": 180.0,\n    \"currency\": \"usd\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/stripe/create-payment-intent",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "stripe", "create-payment-intent"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stripe Payment - Confirm Payment",
+					"request": {
+						"description": "✅ REAL PRODUCTION: Confirms payment after REAL card tap on physical terminal.\n\n📱 Flow:\n1. Customer taps card on Stripe Terminal\n2. Stripe SDK processes payment\n3. Call this endpoint to verify and update database\n\n🔧 What it does:\n- Verifies payment with Stripe\n- Creates Payment record\n- Updates Check status to 'paid'\n- Updates Order status to 'completed'\n- Releases Table (sets to 'available')\n\n⚠️ Requires: Employee authentication token\n💡 Use payment_intent_id from 'Create Payment Intent' response.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_intent_id\": \"{{payment_intent_id}}\",\n    \"order_ticket_id\": \"ORD-20241103-ABC123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/stripe/confirm-payment",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "stripe", "confirm-payment"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stripe Payment - Check Status",
+					"request": {
+						"description": "✅ REAL PRODUCTION: Check the status of a payment intent without processing it.\n\n🔧 Use cases:\n- Verify payment status before confirming\n- Check if payment succeeded\n- Debug payment issues\n\n⚠️ Requires: Employee authentication token",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_intent_id\": \"{{payment_intent_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/stripe/check-status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "stripe", "check-status"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stripe Terminal - Create Connection Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.secret) {",
+									"    pm.collectionVariables.set('connection_token_secret', response.data.secret);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"description": "✅ REAL PRODUCTION: Create connection token for Stripe Terminal hardware card readers.\n\n📱 Flow:\n1. Call this endpoint to get connection token\n2. Flutter app uses secret to connect to Terminal\n3. Terminal is ready to accept card taps\n\n🔧 Requirements:\n- Stripe Terminal hardware device\n- Employee authentication token required\n\n💡 This is for REAL physical card readers, not simulation.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/pos/stripe/create-connection-token",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "stripe", "create-connection-token"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stripe Payment - Test Payment (Card Number)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.payment_intent_id) {",
+									"    pm.collectionVariables.set('test_payment_intent_id', response.data.payment_intent_id);",
+									"}",
+									"if (response.data && response.data.payment_method_id) {",
+									"    pm.collectionVariables.set('test_payment_method_id', response.data.payment_method_id);",
+									"}",
+									"console.log('Test Payment Response:', JSON.stringify(response, null, 2));"
+								]
+							}
+						}
+					],
+					"request": {
+						"description": "🧪 TEST MODE: Create and process payment with card number (for testing without physical card reader).\n\n✅ Use Stripe test cards:\n- Success: 4242 4242 4242 4242\n- Declined: 4000 0000 0000 0002\n- Insufficient: 4000 0000 0000 9995\n\n📝 Test Card Details:\n- Card: 4242 4242 4242 4242\n- Expiry: 12/29 (exp_month: 12, exp_year: 2029)\n- CVC: 123\n\n⚠️ This endpoint automatically confirms and processes payment if successful. Perfect for testing tap payment flow in sandbox mode.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{employee_token}}",
+								"description": "Employee authentication token"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"order_ticket_id\": \"ORD-20251121-XJROYU\",\n    \"amount\": 100.00,\n    \"tip_amount\": 18.00,\n    \"currency\": \"usd\",\n    \"card_number\": \"4242 4242 4242 4242\",\n    \"exp_month\": 12,\n    \"exp_year\": 2029,\n    \"cvc\": \"123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/stripe/test-payment",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "stripe", "test-payment"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Table Release",
+					"request": {
+						"description": "Release a table by setting its status to 'available'. Use this to manually free up a table without completing an order.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"table_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/pos/table/release",
+							"host": ["{{base_url}}"],
+							"path": ["api", "pos", "table", "release"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "STRIPE DEMO API",
+			"description": "Demo Stripe payment endpoints - No authentication required. Perfect for testing Stripe integration.",
+			"item": [
+				{
+					"name": "Demo - Create Payment Intent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.payment_intent_id) {",
+									"    pm.collectionVariables.set('demo_payment_intent_id', response.data.payment_intent_id);",
+									"}",
+									"if (response.data && response.data.client_secret) {",
+									"    pm.collectionVariables.set('demo_client_secret', response.data.client_secret);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"description": "DEMO: Create Payment Intent with card_present for tap/insert/swipe payments. No authentication required. Uses automatic capture.\n\n⚠️ IMPORTANT: Currency must match your Stripe account country:\n- US accounts: Use 'usd' only\n- UK accounts: Use 'gbp' only\n- EU accounts: Use 'eur' only",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 10.0,\n    \"currency\": \"usd\",\n    \"description\": \"Demo Payment Test\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/stripe-demo/create-payment-intent",
+							"host": ["{{base_url}}"],
+							"path": ["api", "stripe-demo", "create-payment-intent"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Demo - Check Payment Status",
+					"request": {
+						"description": "DEMO: Check payment status. No authentication required. Use payment_intent_id from Create Payment Intent response.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_intent_id\": \"{{demo_payment_intent_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/stripe-demo/check-status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "stripe-demo", "check-status"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Demo - Test Payment (Card Tap Simulation)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.payment_intent_id) {",
+									"    pm.collectionVariables.set('demo_payment_intent_id', response.data.payment_intent_id);",
+									"}",
+									"if (response.data && response.data.payment_method_id) {",
+									"    pm.collectionVariables.set('demo_payment_method_id', response.data.payment_method_id);",
+									"}",
+									"console.log('Test Payment Response:', JSON.stringify(response, null, 2));"
+								]
+							}
+						}
+					],
+					"request": {
+						"description": "🧪 DEMO: Simulate card tap payment with test card. Complete payment cycle for testing.\n\n📋 STEP 1: First call 'Demo - Create Payment Intent' to get payment_intent_id\n📋 STEP 2: Then call this endpoint with the payment_intent_id and test card details\n\n✅ Stripe Test Cards:\n- Success: 4242 4242 4242 4242\n- Declined: 4000 0000 0000 0002\n- Insufficient: 4000 0000 0000 9995\n\n📝 Test Card Details (Default):\n- Card: 4242 4242 4242 4242\n- Expiry: 12/29 (exp_month: 12, exp_year: 2029)\n- CVC: 123\n\n⚠️ No authentication required. No database connection. Pure Stripe testing.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_intent_id\": \"{{demo_payment_intent_id}}\",\n    \"payment_method_id\": \"pm_card_visa\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/stripe-demo/test-payment",
+							"host": ["{{base_url}}"],
+							"path": ["api", "stripe-demo", "test-payment"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Demo - Refund Payment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.refund_id) {",
+									"    pm.collectionVariables.set('demo_refund_id', response.data.refund_id);",
+									"}",
+									"console.log('Refund Response:', JSON.stringify(response, null, 2));"
+								]
+							}
+						}
+					],
+					"request": {
+						"description": "🧪 DEMO: Refund a successful payment. Complete refund cycle for testing.\n\n📋 STEP 1: Create payment intent\n📋 STEP 2: Process payment with test card\n📋 STEP 3: Refund the payment using this endpoint\n\n💡 Refund Options:\n- Full refund: Don't include 'amount' field\n- Partial refund: Include 'amount' field (e.g., 50.00)\n\n📝 Refund Reasons:\n- duplicate: Duplicate transaction\n- fraudulent: Fraudulent transaction\n- requested_by_customer: Customer requested refund\n\n⚠️ No authentication required. No database connection. Pure Stripe testing.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"payment_intent_id\": \"{{demo_payment_intent_id}}\",\n    \"amount\": null,\n    \"reason\": \"requested_by_customer\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/stripe-demo/refund-payment",
+							"host": ["{{base_url}}"],
+							"path": ["api", "stripe-demo", "refund-payment"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Demo - Create Connection Token (Terminal)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.data && response.data.secret) {",
+									"    pm.collectionVariables.set('connection_token_secret', response.data.secret);",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"description": "DEMO: Create connection token for Stripe Terminal. No authentication required. Flutter app uses this secret to connect to Terminal readers for card_present payments.",
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/stripe-demo/create-connection-token",
+							"host": ["{{base_url}}"],
+							"path": ["api", "stripe-demo", "create-connection-token"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "admin_email",
+			"value": "admin@nadiadrestaurant.com",
+			"type": "string"
+		},
+		{
+			"key": "admin_password",
+			"value": "password",
+			"type": "string"
+		},
+		{
+			"key": "super_admin_email",
+			"value": "superadmin@system.com",
+			"type": "string"
+		},
+		{
+			"key": "super_admin_password",
+			"value": "password",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "pos_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "payment_intent_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "client_secret",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "demo_payment_intent_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "demo_client_secret",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "connection_token_secret",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

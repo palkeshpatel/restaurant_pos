@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class DiscountReason extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'business_id',
+        'name',
+        'requires_manager',
+    ];
+
+    protected $casts = [
+        'requires_manager' => 'boolean',
+    ];
+
+    public function business(): BelongsTo
+    {
+        return $this->belongsTo(Business::class);
+    }
+}
